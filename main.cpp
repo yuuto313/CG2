@@ -162,26 +162,38 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(device != nullptr);
 	Log("Complete createD3D12Device!!!\n"); //初期化完了のログを出す
 
+	//-------------------------------------
 	//コマンドキューを生成する	
+	//-------------------------------------
+
 	ID3D12CommandQueue* commandQueue = nullptr;
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
 	hr = device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&commandQueue));
 	//コマンドキューの生成がうまくいかなかったので起動できない
 	assert(SUCCEEDED(hr));
 
-	//コマンドアロケータを生成する
+	//-------------------------------------
+	//コマンドアロケータを生成する(命令保存用もメモリー）
+	//-------------------------------------
+
 	ID3D12CommandAllocator* commandAllocator = nullptr;
 	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
 	//コマンドアロケータの生成がうまくいかなかったので起動できない
 	assert(SUCCEEDED(hr));
 
+	//-------------------------------------
 	//コマンドリストを生成する
+	//-------------------------------------
+
 	ID3D12GraphicsCommandList* commandList = nullptr;
 	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, IID_PPV_ARGS(&commandList));
 	//コマンドリストの生成がうまくいかなかったので起動できない
 	assert(SUCCEEDED(hr));
 
+	//-------------------------------------
 	//スワップチェーンを生成する
+	//-------------------------------------
+
 	IDXGISwapChain4* swapChain = nullptr;
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
 	swapChainDesc.Width = kClientWidth;                //画面の幅。ウィンドウのクライアント領域を同じものにしておく
@@ -195,7 +207,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue, hwnd, &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(&swapChain));
 	assert(SUCCEEDED(hr));
 
+	//-------------------------------------
 	//ディスクリプタヒープの生成
+	//-------------------------------------
+
 	ID3D12DescriptorHeap* rtvDescriptorHeap = nullptr;
 	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc{};
 	rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;  //レンダーターゲットビュー用
@@ -204,7 +219,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//ディスクリプタヒータがうまくいかなかったので起動できない
 	assert(SUCCEEDED(hr));
 
+	//-------------------------------------
 	//SwapChainからResourceを引っ張ってくる
+	//-------------------------------------
+
 	ID3D12Resource* swapChainResources[2] = { nullptr };
 	hr = swapChain->GetBuffer(0, IID_PPV_ARGS(&swapChainResources[0]));
 	//うまく取得出来なければ起動できない
@@ -212,6 +230,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = swapChain->GetBuffer(1, IID_PPV_ARGS(&swapChainResources[1]));
 	assert(SUCCEEDED(hr));
 
+	//-------------------------------------
+	//RTVを作る
+	//-------------------------------------
+	
 	//RTVの設定
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
 	rtvDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;  //出力結果をSRGBに変換して書き込む
@@ -241,6 +263,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		else {
 			//ゲームの処理
 
+	        //-------------------------------------
+			//コマンドを積み込んで確定させる
+	        //-------------------------------------
+		
 			//これから書き込むバックバッファのインデックスを取得
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 			//描画先のRTVを設定する
@@ -251,6 +277,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//コマンドリストの内容を確定させる。すべてのコマンドを積んでからClearすること
 			hr = commandList->Close();
 			assert(SUCCEEDED(hr));
+
+			//-------------------------------------
+			//コマンドをキックする
+			//-------------------------------------
 
 			//GPUのコマンドリストの実行を行わせる
 			ID3D12CommandList* commandLists[] = { commandList };
