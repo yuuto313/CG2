@@ -316,7 +316,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//２つ目を作る
 	device->CreateRenderTargetView(swapChainResources[1], &rtvDesc, rtvHandles[1]);
 
-	
+	//-------------------------------------
+    //FenceとEventを作成する
+    //-------------------------------------
+
+	ID3D12Fence* fence = nullptr;
+	uint64_t fenceValue = 0;
+
+	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+	assert(SUCCEEDED(hr));
+
+	//FenceのSignalを待つためのイベントを作成する
+	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	assert(fenceEvent != nullptr);
 
 	MSG msg{};
 
@@ -335,11 +347,44 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		
 			//これから書き込むバックバッファのインデックスを取得
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+			
+			//-------------------------------------
+            //TransitionBarrierを張る
+            //-------------------------------------
+
+			D3D12_RESOURCE_BARRIER barrier{};
+
+			//今回のバリアはTransition
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			//Noneにしておく
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			//バリアを張る対象のリソース。現在のバックバッファに対して行う
+			barrier.Transition.pResource = swapChainResources[backBufferIndex];
+			//遷移前（現在）の	ResourceState
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+			//遷移後のResourceState
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			//TransitionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+
+
 			//描画先のRTVを設定する
 			commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, nullptr);
 			//指定した色で画面全体をクリアする
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f };//青っぽい色。RGBAの順
 			commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
+
+			//-------------------------------------
+            //画面表示できるようにする
+            //-------------------------------------
+			
+			//画面に描く処理はすべて終わり、画面に映すので状態を遷移
+			//今回はRenderTargetからPresentにする
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+			//TransitionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+
 			//コマンドリストの内容を確定させる。すべてのコマンドを積んでからClearすること
 			hr = commandList->Close();
 			assert(SUCCEEDED(hr));
@@ -353,6 +398,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandQueue->ExecuteCommandLists(1, commandLists);
 			//GPUとOSに画面の交換を行うよう通知する
 			swapChain->Present(1, 0);
+
+			//-------------------------------------
+            //GPUにSignalを送る
+            //-------------------------------------
+			
+			//Fenceの値を更新
+			fenceValue++;
+			
+			//GPUがここまでたどり着いたときに、Fenceの値を指定した値に記入するようにSignalを送る
+			commandQueue->Signal(fence, fenceValue);
+
+			//-------------------------------------
+            //Fenceの値を確認してGPUを待つ
+            //-------------------------------------
+
+			if (fence->GetCompletedValue() < fenceValue) {
+				//指定したSignalにたどり着いていないので、たどり着くまで待つようにイベントを設定する
+				fence->SetEventOnCompletion(fenceValue, fenceEvent);
+				//イベントを待つ
+				WaitForSingleObject(fenceEvent, INFINITE);
+			}
+
 			//次のフレーム用のコマンドリストを準備
 			hr = commandAllocator->Reset();
 			assert(SUCCEEDED(hr));
