@@ -9,7 +9,9 @@
 #include <cassert>
 
 
+//-------------------------------------
 //ウィンドウプロシージャ
+//-------------------------------------
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	//メッセージに応じてゲーム固有の処理を行う
 	switch (msg) {
@@ -68,7 +70,9 @@ std::string ConvertString(const std::wstring& str) {
 	return result;
 }
 
-
+//-------------------------------------
+//main関数
+//-------------------------------------
 
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -96,7 +100,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//クライアント領域を元に実際のサイズにwrcを変更してもらう
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
 
-	//ウィンドウの生成
+	//-------------------------------------
+	// ウィンドウの生成
+    //-------------------------------------
+
 	HWND hwnd = CreateWindow(
 		wc.lpszClassName,               //引用するクラス名
 		L"CG2",                         //タイトルバーの文字
