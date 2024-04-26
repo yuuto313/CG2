@@ -1,19 +1,20 @@
-float4 main() : SV_TARGET
-{
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
-}
+//float4 main() : SV_TARGET
+//{
+//	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+//}
 
 //色など三角形の表面の材質を決定するものをMaterialと呼ぶ
 struct Material
 {
-    float32_t4 color;
+    float4 color;
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
 struct PixcelShaderOutput
 {
-    float32_t4 color : SV_TARGET0;
+    float4 color : SV_TARGET0;
 };
+
 PixcelShaderOutput main()
 {
     PixcelShaderOutput output;
