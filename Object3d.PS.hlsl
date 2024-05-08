@@ -1,38 +1,25 @@
-//float4 main() : SV_TARGET
-//{
-//	return float4(1.0f, 1.0f, 1.0f, 1.0f);
-//}
+#include "Object3d.hlsli"
 
-//色など三角形の表面の材質を決定するものをMaterialと呼ぶ
 struct Material
 {
     float4 color;
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
+Texture2D<float4> gTexture : register(t0);
+SamplerState gSampler : register(s0);
+
 struct PixcelShaderOutput
 {
     float4 color : SV_TARGET0;
 };
 
-PixcelShaderOutput main()
+PixcelShaderOutput main(VertexShaderOutput input)
 {
     PixcelShaderOutput output;
-    output.color = gMaterial.color;
+    float4 textureColor = gTexture.Sample(gSampler, input.texcoord);
+    output.color = gMaterial.color * textureColor;
+    
     return output;
-}
+};
 
-//02_00
-
-//struct PixcelShaderOutput
-//{
-//    float32_t4 color : SV_TARGET0;
-//};
-
-//PixcelShaderOutput main()
-//{
-//    PixcelShaderOutput output;
-//    output.color = float32_t4(1.0, 1.0, 1.0, 1.0);
-//    return output;
-
-//}
