@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <string>
 #include <format>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <d3d12.h>
 #pragma comment(lib,"d3d12.lib")
 #include <dxgi1_6.h>
@@ -24,6 +27,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 //
 //-------------------------------------
 
+//スライドの４と８はまだ
 
 
 //cotangent(cot)、tanの逆数
@@ -58,6 +62,12 @@ typedef struct {
 	Vector2 texcoord;
 }VertexData;
 
+//球
+typedef struct  {
+	Vector3 center;//中心点
+	float radius;//半径
+}Sphere;
+
 //Transform情報を作る
 struct  Transform
 {
@@ -87,7 +97,6 @@ Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
 	}
 	return result;
 }
-
 
 //逆行列
 Matrix4x4 Inverse(const Matrix4x4& m) {
@@ -123,6 +132,21 @@ Matrix4x4 Inverse(const Matrix4x4& m) {
 	}
 	return result;
 }
+
+//座標変換
+//Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix) {
+//	Vector3 result{};
+//	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + vector.z * matrix.m[2][0] + 1.0f * matrix.m[3][0];
+//	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + vector.z * matrix.m[2][1] + 1.0f * matrix.m[3][1];
+//	result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + vector.z * matrix.m[2][2] + 1.0f * matrix.m[3][2];
+//	float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] + vector.z * matrix.m[2][3] + 1.0f * matrix.m[3][3];
+//	assert(w != 0.0f);
+//	result.x /= w;
+//	result.y /= w;
+//	result.z /= w;
+//	return result;
+//
+//}
 
 // 平行移動
 Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
@@ -1056,28 +1080,73 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//書き込むためのアドレスを取得
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 
+	{
 	//一つ目の三角形
 	//左下
-	vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
-	vertexData[0].texcoord = { 0.0f,1.0f };
-	//上
-	vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
-	vertexData[1].texcoord = { 0.5f,0.0f };
-	//右下
-	vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
-	vertexData[2].texcoord = { 1.0f,1.0f };
+		//vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
+		//vertexData[0].texcoord = { 0.0f,1.0f };
+		////上
+		//vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
+		//vertexData[1].texcoord = { 0.5f,0.0f };
+		////右下
+		//vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
+		//vertexData[2].texcoord = { 1.0f,1.0f };
 
-	//二つ目の三角形
-	//左下2
-	vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
-	vertexData[3].texcoord = { 0.0f,1.0f };
-	//上2
-	vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
-	vertexData[4].texcoord = { 0.5f,0.0f };
-	//右下2
-	vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
-	vertexData[5].texcoord = { 1.0f,1.0f };
+		////二つ目の三角形
+		////左下2
+		//vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
+		//vertexData[3].texcoord = { 0.0f,1.0f };
+		////上2
+		//vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
+		//vertexData[4].texcoord = { 0.5f,0.0f };
+		////右下2
+		//vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
+		//vertexData[5].texcoord = { 1.0f,1.0f };
+	}
 
+	//-------------------------------------
+	//球を作成する
+	//-------------------------------------
+
+	//分割数
+	const uint32_t kSubdivision = 16;
+	//経度分割一つ分の角度
+	const float kLonEvery = (2 * (static_cast<float>(M_PI))) / kSubdivision;
+	//緯度分割一つ分の角度
+	const float kLatEvery = (static_cast<float>(M_PI)) / kSubdivision;
+	//緯度の方向に分割（横方向）-π/2 ~ π/2
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
+		float lat = -(static_cast<float>(M_PI)) / 2.0f + kLatEvery * latIndex;//現在の緯度
+		//経度の方向に分割（縦方向）　0~2π
+		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
+			uint32_t start = (latIndex * kSubdivision + lonIndex) * 6;
+			float lon = lonIndex * kLonEvery;//現在の経度
+			//頂点データを入力する。基準点a
+			vertexData[start].position.x = cosf(lat) * cos(lon);
+			vertexData[start].position.y = sinf(lat);
+			vertexData[start].position.z = cosf(lat) * sinf(lon);
+			vertexData[start].position.w = 1.0f;
+			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+
+			vertexData[2].position.x = cosf(lat + kLatEvery) * cosf(lon);
+			vertexData[2].position.y = sinf(lat * kLatEvery);
+			vertexData[2].position.z = cos(lat + kLatEvery) * sinf(lon);
+			vertexData[2].position.w = 1.0f;
+			vertexData[2].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+
+			vertexData[3].position.x = cosf(lat) * cosf(lon + kLonEvery);
+			vertexData[3].position.y = sinf(lat);
+			vertexData[3].position.z = cosf(lat) * sinf(lon + kLonEvery);
+			vertexData[3].position.w = 1.0f;
+			vertexData[3].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+
+			vertexData[4].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
+			vertexData[4].position.y = sinf(lat * kLatEvery);
+			vertexData[4].position.z = cos(lat + kLatEvery) * sinf(lon + kLonEvery);
+			vertexData[4].position.w = 1.0f;
+			vertexData[4].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+		}
+	}
 
 	//-------------------------------------
 	//矩形を描画するためのVertexResource
