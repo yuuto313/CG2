@@ -1490,6 +1490,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexResourceSprite->Release();
 	vertexResourceSprite->Release();
 	transformationMatrixResourceSprite->Release();
+	depthStencilResource->Release();
+	textureResource->Release();
+	srvDescriptorHeap->Release();
+	dsvDescriptorHeap->Release();
 
 
 #ifdef _DEBUG
