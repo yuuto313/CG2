@@ -1037,12 +1037,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 	//VertexResourceを生成する
 	//-------------------------------------
-	
+	//球の分割数
+	const uint32_t kSubdivision = 16;
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * 6);
 
 	//-------------------------------------
 	//VertexBufferViewを作成する
 	//-------------------------------------
+
+	
 
 	//頂点バッファビューを作成する
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
@@ -1090,8 +1093,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//球を作成する
 	//-------------------------------------
 
-	//分割数
-	const uint32_t kSubdivision = 16;
 	//経度分割一つ分の角度
 	const float kLonEvery = (2 * (static_cast<float>(M_PI))) / kSubdivision;
 	//緯度分割一つ分の角度
@@ -1127,7 +1128,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[3].position.z = cos(lat + kLatEvery) * sinf(lon + kLonEvery);
 			vertexData[3].position.w = 1.0f;
 			vertexData[3].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+		
+			vertexData[4].position.x = cosf(lat + kLatEvery) * cosf(lon);
+			vertexData[4].position.y = sinf(lat * kLatEvery);
+			vertexData[4].position.z = cos(lat + kLatEvery) * sinf(lon);
+			vertexData[4].position.w = 1.0f;
+			vertexData[4].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+		
+			vertexData[5].position.x = cosf(lat) * cosf(lon + kLonEvery);
+			vertexData[5].position.y = sinf(lat);
+			vertexData[5].position.z = cosf(lat) * sinf(lon + kLonEvery);
+			vertexData[5].position.w = 1.0f;
+			vertexData[5].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+			
 		}
+
+
 	}
 
 	//-------------------------------------
@@ -1410,7 +1426,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
 			//描画！（DrawCall/ドローコール）。３頂点で１つのインスタンス。
-			commandList->DrawInstanced(4, 1, 0, 0);
+			commandList->DrawInstanced(6, 1, 0, 0);
 
 			//-------------------------------------
 		    //矩形の描画コマンドを積む
