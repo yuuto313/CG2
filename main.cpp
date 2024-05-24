@@ -27,9 +27,6 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 //
 //-------------------------------------
 
-//スライドの４と８はまだ
-
-
 //cotangent(cot)、tanの逆数
 float cot(float other) {
 	return 1 / tan(other);
@@ -132,21 +129,6 @@ Matrix4x4 Inverse(const Matrix4x4& m) {
 	}
 	return result;
 }
-
-//座標変換
-//Vector3 Transform(const Vector3& vector, const Matrix4x4& matrix) {
-//	Vector3 result{};
-//	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + vector.z * matrix.m[2][0] + 1.0f * matrix.m[3][0];
-//	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + vector.z * matrix.m[2][1] + 1.0f * matrix.m[3][1];
-//	result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + vector.z * matrix.m[2][2] + 1.0f * matrix.m[3][2];
-//	float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] + vector.z * matrix.m[2][3] + 1.0f * matrix.m[3][3];
-//	assert(w != 0.0f);
-//	result.x /= w;
-//	result.y /= w;
-//	result.z /= w;
-//	return result;
-//
-//}
 
 // 平行移動
 Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
@@ -1128,23 +1110,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start].position.w = 1.0f;
 			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
 
-			vertexData[2].position.x = cosf(lat + kLatEvery) * cosf(lon);
-			vertexData[2].position.y = sinf(lat * kLatEvery);
-			vertexData[2].position.z = cos(lat + kLatEvery) * sinf(lon);
+			vertexData[1].position.x = cosf(lat + kLatEvery) * cosf(lon);
+			vertexData[1].position.y = sinf(lat * kLatEvery);
+			vertexData[1].position.z = cos(lat + kLatEvery) * sinf(lon);
+			vertexData[1].position.w = 1.0f;
+			vertexData[1].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+
+			vertexData[2].position.x = cosf(lat) * cosf(lon + kLonEvery);
+			vertexData[2].position.y = sinf(lat);
+			vertexData[2].position.z = cosf(lat) * sinf(lon + kLonEvery);
 			vertexData[2].position.w = 1.0f;
 			vertexData[2].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
 
-			vertexData[3].position.x = cosf(lat) * cosf(lon + kLonEvery);
-			vertexData[3].position.y = sinf(lat);
-			vertexData[3].position.z = cosf(lat) * sinf(lon + kLonEvery);
+			vertexData[3].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
+			vertexData[3].position.y = sinf(lat * kLatEvery);
+			vertexData[3].position.z = cos(lat + kLatEvery) * sinf(lon + kLonEvery);
 			vertexData[3].position.w = 1.0f;
 			vertexData[3].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
-
-			vertexData[4].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
-			vertexData[4].position.y = sinf(lat * kLatEvery);
-			vertexData[4].position.z = cos(lat + kLatEvery) * sinf(lon + kLonEvery);
-			vertexData[4].position.w = 1.0f;
-			vertexData[4].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
 		}
 	}
 
@@ -1283,7 +1265,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 	
 	//zが-５の位置でｚ+の方向を向いているカメラ
-	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-5.0f} };
+	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-10.0f} };
 
 
 	//-------------------------------------
@@ -1428,7 +1410,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
 			//描画！（DrawCall/ドローコール）。３頂点で１つのインスタンス。
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(4, 1, 0, 0);
 
 			//-------------------------------------
 		    //矩形の描画コマンドを積む
@@ -1559,7 +1541,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexResourceSprite->Release();
 	vertexResourceSprite->Release();
 	transformationMatrixResourceSprite->Release();
-
+	depthStencilResource->Release();
+	textureResource->Release();
+	srvDescriptorHeap->Release();
+	dsvDescriptorHeap->Release();
 
 #ifdef _DEBUG
 	debugController->Release();
