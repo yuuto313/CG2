@@ -1062,24 +1062,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 	//-------------------------------------
-	//VertexResourceを生成する
-	//-------------------------------------
-	//球の分割数
+//VertexResourceを生成する
+//-------------------------------------
+//球の分割数
 	const uint32_t kSubdivision = 16;
-	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * 6);
+	ID3D12Resource* vertexResource = CreateBufferResource(device, static_cast<size_t>(kSubdivision * kSubdivision) * 6 * sizeof(VertexData));
 
 	//-------------------------------------
 	//VertexBufferViewを作成する
 	//-------------------------------------
-
-	
 
 	//頂点バッファビューを作成する
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 	//リソースの先頭のアドレスから使う
 	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
 	//使用するリソースのサイズは頂点３つ分のサイズ
-	vertexBufferView.SizeInBytes = sizeof(VertexData) * 6;
+	vertexBufferView.SizeInBytes = static_cast<size_t>(kSubdivision * kSubdivision) * 6 * sizeof(VertexData);
 	//１頂点当たりのサイズ
 	vertexBufferView.StrideInBytes = sizeof(VertexData);
 
@@ -1093,27 +1091,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 
 	{
-	//一つ目の三角形
-	//左下
-		//vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
-		//vertexData[0].texcoord = { 0.0f,1.0f };
-		////上
-		//vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
-		//vertexData[1].texcoord = { 0.5f,0.0f };
-		////右下
-		//vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
-		//vertexData[2].texcoord = { 1.0f,1.0f };
+		//一つ目の三角形
+		//左下
+			//vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
+			//vertexData[0].texcoord = { 0.0f,1.0f };
+			////上
+			//vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
+			//vertexData[1].texcoord = { 0.5f,0.0f };
+			////右下
+			//vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
+			//vertexData[2].texcoord = { 1.0f,1.0f };
 
-		////二つ目の三角形
-		////左下2
-		//vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
-		//vertexData[3].texcoord = { 0.0f,1.0f };
-		////上2
-		//vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
-		//vertexData[4].texcoord = { 0.5f,0.0f };
-		////右下2
-		//vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
-		//vertexData[5].texcoord = { 1.0f,1.0f };
+			////二つ目の三角形
+			////左下2
+			//vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
+			//vertexData[3].texcoord = { 0.0f,1.0f };
+			////上2
+			//vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
+			//vertexData[4].texcoord = { 0.5f,0.0f };
+			////右下2
+			//vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
+			//vertexData[5].texcoord = { 1.0f,1.0f };
 	}
 
 	//-------------------------------------
@@ -1131,46 +1129,56 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
 			uint32_t start = (latIndex * kSubdivision + lonIndex) * 6;
 			float lon = lonIndex * kLonEvery;//現在の経度
+
+			float u = float(lonIndex) / float(kSubdivision);
+			float v = 1.0f - float(latIndex) / float(kSubdivision);
+
 			//頂点データを入力する。基準点a
+			//左下
 			vertexData[start].position.x = cosf(lat) * cos(lon);
 			vertexData[start].position.y = sinf(lat);
 			vertexData[start].position.z = cosf(lat) * sinf(lon);
 			vertexData[start].position.w = 1.0f;
-			vertexData[start].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+			vertexData[start].texcoord = { u,v };
 
-			vertexData[1].position.x = cosf(lat + kLatEvery) * cosf(lon);
-			vertexData[1].position.y = sinf(lat * kLatEvery);
-			vertexData[1].position.z = cos(lat + kLatEvery) * sinf(lon);
-			vertexData[1].position.w = 1.0f;
-			vertexData[1].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+			//左上
+			vertexData[start + 1].position.x = cosf(lat + kLatEvery) * cosf(lon);
+			vertexData[start + 1].position.y = sinf(lat + kLatEvery);
+			vertexData[start + 1].position.z = cosf(lat + kLatEvery) * sinf(lon);
+			vertexData[start + 1].position.w = 1.0f;
+			vertexData[start + 1].texcoord = { u,v - 1.0f / kSubdivision };
 
-			vertexData[2].position.x = cosf(lat) * cosf(lon + kLonEvery);
-			vertexData[2].position.y = sinf(lat);
-			vertexData[2].position.z = cosf(lat) * sinf(lon + kLonEvery);
-			vertexData[2].position.w = 1.0f;
-			vertexData[2].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
+			//右下
+			vertexData[start + 2].position.x = cosf(lat) * cosf(lon + kLonEvery);
+			vertexData[start + 2].position.y = sinf(lat);
+			vertexData[start + 2].position.z = cosf(lat) * sinf(lon + kLonEvery);
+			vertexData[start + 2].position.w = 1.0f;
+			vertexData[start + 2].texcoord = { u + 1.0f / kSubdivision,v };
 
-			vertexData[3].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
-			vertexData[3].position.y = sinf(lat * kLatEvery);
-			vertexData[3].position.z = cos(lat + kLatEvery) * sinf(lon + kLonEvery);
-			vertexData[3].position.w = 1.0f;
-			vertexData[3].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
-		
-			vertexData[4].position.x = cosf(lat + kLatEvery) * cosf(lon);
-			vertexData[4].position.y = sinf(lat * kLatEvery);
-			vertexData[4].position.z = cos(lat + kLatEvery) * sinf(lon);
-			vertexData[4].position.w = 1.0f;
-			vertexData[4].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
-		
-			vertexData[5].position.x = cosf(lat) * cosf(lon + kLonEvery);
-			vertexData[5].position.y = sinf(lat);
-			vertexData[5].position.z = cosf(lat) * sinf(lon + kLonEvery);
-			vertexData[5].position.w = 1.0f;
-			vertexData[5].texcoord = { float(lonIndex) / float(kSubdivision),1.0f - float(latIndex) / float(kSubdivision) };
-			
+			//２枚目の三角形
+			//左上
+			vertexData[start + 3].position.x = cosf(lat + kLatEvery) * cosf(lon);
+			vertexData[start + 3].position.y = sinf(lat + kLatEvery);
+			vertexData[start + 3].position.z = cosf(lat + kLatEvery) * sinf(lon);
+			vertexData[start + 3].position.w = 1.0f;
+			vertexData[start + 3].texcoord = { u,v - 1.0f / kSubdivision };
+
+
+			//右上
+			vertexData[start + 4].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
+			vertexData[start + 4].position.y = sinf(lat + kLatEvery);
+			vertexData[start + 4].position.z = cosf(lat + kLatEvery) * sinf(lon + kLonEvery);
+			vertexData[start + 4].position.w = 1.0f;
+			vertexData[start + 4].texcoord = { u + 1.0f / kSubdivision,v - 1.0f / kSubdivision };
+
+			//右下
+			vertexData[start + 5].position.x = cosf(lat) * cosf(lon + kLonEvery);
+			vertexData[start + 5].position.y = sinf(lat);
+			vertexData[start + 5].position.z = cosf(lat) * sinf(lon + kLonEvery);
+			vertexData[start + 5].position.w = 1.0f;
+			vertexData[start + 5].texcoord = { u + 1.0f / kSubdivision,v };
+
 		}
-
-
 	}
 
 	//-------------------------------------
@@ -1484,7 +1492,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
 			//描画！（DrawCall/ドローコール）。３頂点で１つのインスタンス。
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(static_cast<size_t>(kSubdivision * kSubdivision) * 6, 1, 0, 0);
 
 			//-------------------------------------
 		    //矩形の描画コマンドを積む
