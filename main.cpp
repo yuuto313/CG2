@@ -57,13 +57,14 @@ typedef struct {
 typedef struct {
 	Vector4 position;
 	Vector2 texcoord;
+	Vector3 normal;
 }VertexData;
 
-//球
-typedef struct  {
-	Vector3 center;//中心点
-	float radius;//半径
-}Sphere;
+typedef struct {
+	Vector4 color;
+	int32_t enableLighting;
+}Material;
+
 
 //Transform情報を作る
 struct  Transform
@@ -972,7 +973,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//VertexShaderへ渡す頂点データがどのようなものかを指定するオブジェクト
 
 	//InputLayoutの設定
-	D3D12_INPUT_ELEMENT_DESC inputElementDescs[2] = {};
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
 	inputElementDescs[0].SemanticName = "POSITION";
 	inputElementDescs[0].SemanticIndex = 0;
 	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -982,6 +983,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	inputElementDescs[1].SemanticIndex = 0;
 	inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
 	inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+	inputElementDescs[2].SemanticName = "NORMAL";
+	inputElementDescs[2].SemanticIndex = 0;
+	inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
@@ -1062,9 +1069,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 	//-------------------------------------
-//VertexResourceを生成する
-//-------------------------------------
-//球の分割数
+    //VertexResourceを生成する
+    //-------------------------------------
+    //球の分割数
 	const uint32_t kSubdivision = 16;
 	ID3D12Resource* vertexResource = CreateBufferResource(device, static_cast<size_t>(kSubdivision * kSubdivision) * 6 * sizeof(VertexData));
 
@@ -1140,6 +1147,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start].position.z = cosf(lat) * sinf(lon);
 			vertexData[start].position.w = 1.0f;
 			vertexData[start].texcoord = { u,v };
+			vertexData[start].normal.x = vertexData[start].position.x;
+			vertexData[start].normal.y = vertexData[start].position.y;
+			vertexData[start].normal.z = vertexData[start].position.z;
 
 			//左上
 			vertexData[start + 1].position.x = cosf(lat + kLatEvery) * cosf(lon);
@@ -1147,6 +1157,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start + 1].position.z = cosf(lat + kLatEvery) * sinf(lon);
 			vertexData[start + 1].position.w = 1.0f;
 			vertexData[start + 1].texcoord = { u,v - 1.0f / kSubdivision };
+			vertexData[start + 1].normal.x = vertexData[start + 1].position.x;
+			vertexData[start + 1].normal.y = vertexData[start + 1].position.y;
+			vertexData[start + 1].normal.z = vertexData[start + 1].position.z;
 
 			//右下
 			vertexData[start + 2].position.x = cosf(lat) * cosf(lon + kLonEvery);
@@ -1154,6 +1167,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start + 2].position.z = cosf(lat) * sinf(lon + kLonEvery);
 			vertexData[start + 2].position.w = 1.0f;
 			vertexData[start + 2].texcoord = { u + 1.0f / kSubdivision,v };
+			vertexData[start + 2].normal.x = vertexData[start + 2].position.x;
+			vertexData[start + 2].normal.y = vertexData[start + 2].position.y;
+			vertexData[start + 2].normal.z = vertexData[start + 2].position.z;
 
 			//２枚目の三角形
 			//左上
@@ -1162,7 +1178,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start + 3].position.z = cosf(lat + kLatEvery) * sinf(lon);
 			vertexData[start + 3].position.w = 1.0f;
 			vertexData[start + 3].texcoord = { u,v - 1.0f / kSubdivision };
-
+			vertexData[start + 3].normal.x = vertexData[start + 3].position.x;
+			vertexData[start + 3].normal.y = vertexData[start + 3].position.y;
+			vertexData[start + 3].normal.z = vertexData[start + 3].position.z;
 
 			//右上
 			vertexData[start + 4].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
@@ -1170,6 +1188,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start + 4].position.z = cosf(lat + kLatEvery) * sinf(lon + kLonEvery);
 			vertexData[start + 4].position.w = 1.0f;
 			vertexData[start + 4].texcoord = { u + 1.0f / kSubdivision,v - 1.0f / kSubdivision };
+			vertexData[start + 4].normal.x = vertexData[start + 4].position.x;
+			vertexData[start + 4].normal.y = vertexData[start + 4].position.y;
+			vertexData[start + 4].normal.z = vertexData[start + 4].position.z;
 
 			//右下
 			vertexData[start + 5].position.x = cosf(lat) * cosf(lon + kLonEvery);
@@ -1177,7 +1198,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			vertexData[start + 5].position.z = cosf(lat) * sinf(lon + kLonEvery);
 			vertexData[start + 5].position.w = 1.0f;
 			vertexData[start + 5].texcoord = { u + 1.0f / kSubdivision,v };
-
+			vertexData[start + 5].normal.x = vertexData[start + 5].position.x;
+			vertexData[start + 5].normal.y = vertexData[start + 5].position.y;
+			vertexData[start + 5].normal.z = vertexData[start + 5].position.z;
 		}
 	}
 
@@ -1211,23 +1234,33 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//左下
 	vertexDataSprite[0].position = { 0.0f,360.f,0.0f,1.0f };
 	vertexDataSprite[0].texcoord = { 0.0f,1.0f };
+	vertexDataSprite[0].normal = { 0.0f,0.0f,-1.0f };
 	//左上
 	vertexDataSprite[1].position = { 0.0f,0.0f,0.0f,1.0f };
 	vertexDataSprite[1].texcoord = { 0.0f,0.0f };
+	vertexDataSprite[1].normal = { 0.0f,0.0f,-1.0f };
+
 	//右下
 	vertexDataSprite[2].position = { 640.f,360.f,0.0f,1.0f };
 	vertexDataSprite[2].texcoord = { 1.0f,1.0f };
+	vertexDataSprite[2].normal = { 0.0f,0.0f,-1.0f };
 
 	//２枚目の三角形
 	//左上
 	vertexDataSprite[3].position = { 0.0f,0.0f,0.0f,1.0f };
 	vertexDataSprite[3].texcoord = { 0.0f,0.0f };
+	vertexDataSprite[3].normal = { 0.0f,0.0f,-1.0f };
+
 	//右上
 	vertexDataSprite[4].position = { 640.0f,0.0f,0.0f,1.0f };
 	vertexDataSprite[4].texcoord = { 1.0f,0.0f };
+	vertexDataSprite[4].normal = { 0.0f,0.0f,-1.0f };
+
 	//右下
 	vertexDataSprite[5].position = { 640.0f,360.0f,0.0f,1.0f };
 	vertexDataSprite[5].texcoord = { 1.0f,1.0f };
+	vertexDataSprite[5].normal = { 0.0f,0.0f,-1.0f };
+
 
 	//-------------------------------------
 	//ViewportとScissor
@@ -1257,13 +1290,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     //-------------------------------------
 
 	//マテリアル用のリソースを作る。今回はcolor１つ分のサイズを用意する
-	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(VertexData));
+	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
 	//マテリアルにデータを書き込む
-	Vector4* materialData = nullptr;
+	Material* materialData = nullptr;
 	//書き込むためのアドレスを取得
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
-	//今回は赤を書き込み
-	*materialData = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+	//今回は白を書き込み
+	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+	//-------------------------------------
+	//Splite用のResourceを作る
+	//-------------------------------------
+
+	ID3D12Resource* materialResourceSprite = CreateBufferResource(device, sizeof(Material));
+	//マテリアルにデータを書き込む
+	Material* materialDataSprite = nullptr;
+	//書き込むためのアドレスを取得
+	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSprite));
+	//今回は白を書き込み
+	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//SpriteはLightingしないのでfalseを設定する
+	materialDataSprite->enableLighting = false;
 
 	//-------------------------------------
 	//TransformationMatrix用のResourceを作る
@@ -1500,6 +1547,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		    //Spriteの描画。変更が必要なものだけ変更する
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);//VBVを設定する
 			
+			//マテリアルCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 			//TransformationMatrixCBufferの場所を設定する
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			
