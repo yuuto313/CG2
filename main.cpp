@@ -27,6 +27,9 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 //
 //-------------------------------------
 
+//１６まで
+
+
 //cotangent(cot)、tanの逆数
 float cot(float other) {
 	return 1 / tan(other);
@@ -65,6 +68,16 @@ typedef struct {
 	int32_t enableLighting;
 }Material;
 
+typedef struct {
+	Matrix4x4 WVP;
+	Matrix4x4 World;
+}TransformMatrix;
+
+typedef struct {
+	Vector4 color;//ライトの色
+	Vector4 direction;//ライトの向き
+	float intensity;//輝度
+}DirectionalLight;
 
 //Transform情報を作る
 struct  Transform
@@ -612,6 +625,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	const int32_t kClientWidth = 1280;
 	const int32_t kClientHeight = 720;
 
+
+
 	//ウィンドウサイズを表す構造体にクライアント領域を入れる
 	RECT wrc = { 0,0,kClientWidth,kClientHeight };
 
@@ -914,6 +929,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; //VertexShaderで使う
 	rootParameters[1].Descriptor.ShaderRegister = 0; //レジスタ番号0を使う
 
+	rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+	rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderで使う
+	rootParameters[3].Descriptor.ShaderRegister = 1;//レジスタ番号１を使う
     //-------------------------------------
 	//Samplerの設定
 	//-------------------------------------
