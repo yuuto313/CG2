@@ -783,14 +783,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue, hwnd, &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(&swapChain));
 	assert(SUCCEEDED(hr));
 
-	//-------------------------------------
-	//DescriptorSizeを取得しておく
-	//-------------------------------------
-	const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-
-
 
 	//-------------------------------------
 	//ディスクリプタヒープの生成
@@ -816,6 +808,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 	hr = swapChain->GetBuffer(1, IID_PPV_ARGS(&swapChainResources[1]));
 	assert(SUCCEEDED(hr));
+
+	//-------------------------------------
+	//DescriptorSizeを取得しておく
+	//-------------------------------------
+	const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
 
 	//-------------------------------------
 	//RTVを作る
@@ -1138,11 +1138,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4));
 	//マテリアルにデータを書き込む
 	Vector4* materialData = nullptr;
-	Vector4 setColor = { 0.0f,0.0f,0.0f,0.0f };
+	//Vector4 setColor = { 0.0f,0.0f,0.0f,0.0f };
 	//書き込むためのアドレスを取得
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 	//今回は赤を書き込み
-	*materialData = setColor;
+	*materialData = { 1.0f,1.0f,1.0f,1.0f };
 
 	//-------------------------------------
 	//TransformationMatrix用のResourceを作る
@@ -1239,6 +1239,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	
 	//テクスチャ切り替え用のbool変数
 	bool useMonsterBall = true;
+	bool useUvChecker = false;
 
 	MSG msg{};
 	
@@ -1265,8 +1266,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
 			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
 			ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
-			ImGui::ColorEdit4("Texture Color", reinterpret_cast<float*>(&setColor));
-			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
+			ImGui::ColorEdit4("color", &materialData->x);
+			//ImGui::Checkbox("useMonsterBall", &useMonsterBall);
+
+			// テクスチャを切り替えるドロップダウン
+			const char* items[] = { "monsterBall", "uvChecker" };
+			static int currentItemIndex = 0;
+			if (ImGui::Combo("Texture", &currentItemIndex, items, IM_ARRAYSIZE(items))) {
+				if (currentItemIndex == 0) {
+					useMonsterBall = true;
+					useUvChecker = false;
+				}
+				if (currentItemIndex == 1) {
+					useMonsterBall = false;
+					useUvChecker = true;
+				}
+			}
+
 
 			//ゲームの処理
 
@@ -1345,7 +1361,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
 			//SRVのDescriptorTableの先頭を設定。2はRootParameter[2]である
-			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : (useUvChecker ? textureSrvHandleGPU : textureSrvHandleGPU2));
 
 			//描画！（DrawCall/ドローコール）。３頂点で１つのインスタンス。
 			commandList->DrawInstanced(6, 1, 0, 0);
@@ -1408,7 +1424,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//-------------------------------------
 	        //CBufferの中身を更新する
 	        //-------------------------------------
-			transform.rotate.y += 0.03f;
+			//transform.rotate.y += 0.03f;
 			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
 
 			//-------------------------------------
@@ -1467,6 +1483,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResource->Release();
 	wvpResource->Release();
 	textureResource->Release();
+	textureResource2->Release();
+	dsvDescriptorHeap->Release();
+	depthStencilResource->Release();
 
 #ifdef _DEBUG
 	debugController->Release();
