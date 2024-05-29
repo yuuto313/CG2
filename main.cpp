@@ -1110,10 +1110,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4));
 	//マテリアルにデータを書き込む
 	Vector4* materialData = nullptr;
+	Vector4 setColor = { 0.0f,0.0f,0.0f,0.0f };
 	//書き込むためのアドレスを取得
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 	//今回は赤を書き込み
-	*materialData = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+	*materialData = setColor;
 
 	//-------------------------------------
 	//TransformationMatrix用のResourceを作る
@@ -1201,8 +1202,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	        //ゲームの更新処理でパラメータを変更したいタイミングでImGuiの処理を行う
 	        //-------------------------------------
 			//開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
-			ImGui::ShowDemoWindow();
+			//ImGui::ShowDemoWindow();
 
+			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
+			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
+			ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
+			ImGui::ColorEdit4("Texture Color", reinterpret_cast<float*>(&setColor));
 			//ゲームの処理
 
 	        //-------------------------------------
@@ -1380,6 +1385,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	CloseHandle(fenceEvent);
 	fence->Release();
 	rtvDescriptorHeap->Release();
+	srvDescriptorHeap->Release();
 	swapChainResources[0]->Release();
 	swapChainResources[1]->Release();
 	swapChain->Release();
@@ -1400,7 +1406,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 	materialResource->Release();
 	wvpResource->Release();
-
+	textureResource->Release();
 
 #ifdef _DEBUG
 	debugController->Release();
