@@ -21,5 +21,6 @@ VertexShaderOutput main(VertexShaderInput input)
     //mulは行列の積を求める
     output.position = mul(input.position, gTransformationMatrix.WVP);
     output.texcoord = input.texcoord;
+    output.normal = normalize(mul(input.normal, (float3x3) gTransformationMatrix.World));
     return output;
 }
