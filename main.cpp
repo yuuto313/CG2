@@ -1339,7 +1339,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	directionalLightResource->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
 	//デフォルトの値は以下にしておく
 	directionalLightData->color = { 1.0f,1.0f,1.0f };
-	directionalLightData->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightData->direction = Normalize({ 0.0f,-1.0f,0.0f });
 	directionalLightData->intensity = 1.0f;
 
 	//-------------------------------------
@@ -1499,7 +1499,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		}
 		else {
-
 			//-------------------------------------
 			//CBufferの中身を更新する
 			//-------------------------------------
@@ -1530,8 +1529,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
 			//ImGui::ShowDemoWindow();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
-			ImGui::SliderFloat3("DirectionalLight.direction", &directionalLightData->direction.x, -2.0f,2.0f);
-			Normalize(directionalLightData->direction);
+			ImGui::DragFloat3("DirectionalLight.direction", &directionalLightData->direction.x, 0.01f);
+
+			//-------------------------------------
+			//ライトの向きを正規化
+			//-------------------------------------
+			directionalLightData->direction = Normalize(directionalLightData->direction);
+
 			//ゲームの処理
 
 	        //-------------------------------------
