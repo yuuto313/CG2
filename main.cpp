@@ -1339,7 +1339,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	directionalLightResource->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
 	//デフォルトの値は以下にしておく
 	directionalLightData->color = { 1.0f,1.0f,1.0f };
-	directionalLightData->direction = Normalize({ 0.0f,-1.0f,0.0f });
+	directionalLightData->direction = { 0.0f,-1.0f,0.0f };
 	directionalLightData->intensity = 1.0f;
 
 	//-------------------------------------
@@ -1347,13 +1347,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 
 	//WVP用のリソースを作る。Matrix4x4　１つ分のサイズを用意する
-	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
+	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(TransformMatrix));
 	//データを書き込む
-	Matrix4x4* wvpData = nullptr;
+	TransformMatrix* wvpData = nullptr;
 	//書き込むためのアドレスを取得
 	wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
 	//単位行列を書き込んでおく
-	*wvpData = MakeIdentity4x4();
+	wvpData->WVP = MakeIdentity4x4();
+	wvpData->World = MakeIdentity4x4();
 
 
 	//-------------------------------------
@@ -1389,14 +1390,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 	//Sprite用のTransformationMatrix用のリソースを作る
 	//Matrix4x4１つ分のサイズを用意する
-	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(Matrix4x4));
+	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(TransformMatrix));
 	//データを書き込む
-	Matrix4x4* transformationMatrixDataSprite = nullptr;
+	TransformMatrix* transformationMatrixDataSprite = nullptr;
 	//書き込むためのアドレスを取得する
 	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSprite));
 	//単位行列を書き込んでおく
-	*transformationMatrixDataSprite = MakeIdentity4x4();
-
+	transformationMatrixDataSprite->WVP = MakeIdentity4x4();
+	transformationMatrixDataSprite->World = MakeIdentity4x4();
 	//CPUで動かす用のTransformを作る
 	Transform transformSprite{ { 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, { 0.0f,0.0f,0.0f } };
 
@@ -1409,7 +1410,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
 	Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 	Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
-	*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
+	transformationMatrixDataSprite->WVP = worldViewProjectionMatrixSprite;
+	transformationMatrixDataSprite->World = worldMatrixSprite;
 
 	//-------------------------------------
 	//WorldViewProjectionMatrixを作る
@@ -1497,6 +1499,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		}
 		else {
+
+			//-------------------------------------
+			//CBufferの中身を更新する
+			//-------------------------------------
+			transform.rotate.y += 0.03f;
+			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+
+			//-------------------------------------
+			//WVPMatrixを作成して設定する
+			//-------------------------------------
+			Matrix4x4 cameraMatrix = MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+			//透視投影行列を計算
+			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.f);
+			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+			wvpData->WVP = worldViewProjectionMatrix;
+			wvpData->World = worldMatrix;
+
 			//-------------------------------------
             //フレームの始まる旨を告げる
             //-------------------------------------
@@ -1510,7 +1530,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
 			//ImGui::ShowDemoWindow();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
-
+			ImGui::SliderFloat3("DirectionalLight.direction", &directionalLightData->direction.x, -2.0f,2.0f);
+			Normalize(directionalLightData->direction);
 			//ゲームの処理
 
 	        //-------------------------------------
@@ -1610,6 +1631,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//SpriteはuvCheckerを使うようにする
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+
 			//描画！（DrawCall/ドローコール)
 			commandList->DrawInstanced(6, 1, 0, 0);
 
@@ -1669,22 +1692,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			hr = commandList->Reset(commandAllocator, nullptr);
 			assert(SUCCEEDED(hr));
 
-			//-------------------------------------
-	        //CBufferの中身を更新する
-	        //-------------------------------------
-			transform.rotate.y += 0.03f;
-			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-
-			//-------------------------------------
-			//WVPMatrixを作成して設定する
-			//-------------------------------------
-			Matrix4x4 cameraMatrix = MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-			//透視投影行列を計算
-			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.f);
-			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
-			*wvpData = worldViewProjectionMatrix;
-
 		}
 		
 	}
@@ -1737,7 +1744,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srvDescriptorHeap->Release();
 	dsvDescriptorHeap->Release();
 	textureResource2->Release();
-
+	directionalLightResource->Release();
 
 #ifdef _DEBUG
 	debugController->Release();
