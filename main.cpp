@@ -54,6 +54,10 @@ typedef struct {
 }Vector4;
 
 typedef struct {
+	float m[3][3];
+}Matrix3x3;
+
+typedef struct {
 	float m[4][4];
 }Matrix4x4;
 
@@ -66,6 +70,9 @@ typedef struct {
 typedef struct {
 	Vector4 color;
 	int32_t enableLighting;
+	float padding[3];
+	Matrix4x4 uvTransform;
+
 }Material;
 
 typedef struct {
@@ -1314,6 +1321,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//今回は白を書き込み
 	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	materialData->enableLighting = true;
+	//単位行列で初期化
+	materialData->uvTransform = MakeIdentity4x4();
 
 	//-------------------------------------
 	//Splite用のマテリアルを作成して利用する
@@ -1329,6 +1338,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//SpriteはLightingしないのでfalseを設定する
 	materialDataSprite->enableLighting = false;
+	//単位行列で初期化
+	materialDataSprite->uvTransform = MakeIdentity4x4();
 
 	//-------------------------------------
 	//平行光源用のResourceを作成
@@ -1384,6 +1395,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 	//Transform変数を作る
 	Transform transform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
+
+	//-------------------------------------
+	//uvTransform用の変数を用意
+	//-------------------------------------
+
+	Transform uvTransformSprite{
+		{1.0f,1.0f,1.f},
+		{0.0f,0.0f,0.0f},
+		{0.0f,0.0f,0.0f},
+	};
 
 	//-------------------------------------
 	//VertexShaderで利用するtransformationMatrix用のResourceを作成
@@ -1517,6 +1538,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			wvpData->World = worldMatrix;
 
 			//-------------------------------------
+			//UVTransform用の行列を作成する
+			//-------------------------------------
+
+			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+			//materialDataSprite->uvTransform = uvTransformMatrix;
+
+			//-------------------------------------
             //フレームの始まる旨を告げる
             //-------------------------------------
 		    ImGui_ImplDX12_NewFrame();
@@ -1530,6 +1560,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//ImGui::ShowDemoWindow();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			ImGui::DragFloat3("DirectionalLight.direction", &directionalLightData->direction.x, 0.01f);
+			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.f);
+			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.f);
+			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+
 
 			//-------------------------------------
 			//ライトの向きを正規化
