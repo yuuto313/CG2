@@ -1133,30 +1133,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//書き込むためのアドレスを取得
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 
-	{
-		//一つ目の三角形
-		//左下
-			//vertexData[0].position = { -0.5f,-0.5f,0.0f,1.0f };
-			//vertexData[0].texcoord = { 0.0f,1.0f };
-			////上
-			//vertexData[1].position = { 0.0f,0.5f,0.0f,1.0f };
-			//vertexData[1].texcoord = { 0.5f,0.0f };
-			////右下
-			//vertexData[2].position = { 0.5f,-0.5f,0.0f,1.0f };
-			//vertexData[2].texcoord = { 1.0f,1.0f };
-
-			////二つ目の三角形
-			////左下2
-			//vertexData[3].position = { -0.5f,-0.5f,0.5f,1.0f };
-			//vertexData[3].texcoord = { 0.0f,1.0f };
-			////上2
-			//vertexData[4].position = { 0.0f,0.0f,0.0f,1.0f };
-			//vertexData[4].texcoord = { 0.5f,0.0f };
-			////右下2
-			//vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
-			//vertexData[5].texcoord = { 1.0f,1.0f };
-	}
-
 	//-------------------------------------
 	//球を作成する
 	//-------------------------------------
@@ -1247,27 +1223,49 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 
 	//Sprite用の頂点リソースを作る
-	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 6);
-
+	//ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 6);
+	ID3D12Resource* indexResourceSprite = CreateBufferResource(device, sizeof(uint32_t) * 6);
+	{
 	//-------------------------------------
 	//矩形を描画するためのVertexBufferView
 	//-------------------------------------
 
-	//頂点バッファビューを作成する
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
-	//リソースの先頭アドレスから使う
-	vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
-	//使用するリソースのサイズは頂点６つ分のサイズ
-	vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 6;
-	//１頂点分のサイズ
-	vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
+	////頂点バッファビューを作成する
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
+	////リソースの先頭アドレスから使う
+	//vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
+	////使用するリソースのサイズは頂点６つ分のサイズ
+	//vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 6;
+	////１頂点分のサイズ
+	//vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
+}
+	//-------------------------------------
+	//矩形描画のindex用のResourceを作成
+	//-------------------------------------
+	//Viewを作成
+	D3D12_INDEX_BUFFER_VIEW indexBufferViewSprite{};
+	//リソースの先頭のアドレスから使う
+	indexBufferViewSprite.BufferLocation = indexResourceSprite->GetGPUVirtualAddress();
+	//使用するリソースサイズはインデックス6つ分のサイズ
+	indexBufferViewSprite.SizeInBytes = sizeof(uint32_t) * 6;
+	//インデックスはuint32_tとする
+	indexBufferViewSprite.Format = DXGI_FORMAT_R32_UINT;
+	//インデックスリソースにデータを書き込む
+	uint32_t* indexDataSprite = nullptr;
+	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
+	indexDataSprite[0] = 0;
+	indexDataSprite[1] = 1;
+	indexDataSprite[2] = 2;
+	indexDataSprite[3] = 1;
+	indexDataSprite[4] = 3;
+	indexDataSprite[5] = 2;
 
 	//-------------------------------------
 	//矩形の頂点データを設定する
 	//-------------------------------------
 
 	VertexData* vertexDataSprite = nullptr;
-	vertexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSprite));
+	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSprite));
 	//１枚目の三角形
 	//左下
 
@@ -1625,8 +1623,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		    //矩形の描画コマンドを積む
 		    //-------------------------------------
 		    //Spriteの描画。変更が必要なものだけ変更する
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);//VBVを設定する
-			
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);//VBVを設定する
+			commandList->IASetIndexBuffer(&indexBufferViewSprite);//IBVを設定
+
 			//マテリアルCBufferの場所を設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 			//TransformationMatrixCBufferの場所を設定する
@@ -1638,7 +1637,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
 
 			//描画！（DrawCall/ドローコール)
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 
 
 			//-------------------------------------
@@ -1740,8 +1739,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 	materialResource->Release();
 	wvpResource->Release();
-	vertexResourceSprite->Release();
-	vertexResourceSprite->Release();
+	indexResourceSprite->Release();
 	transformationMatrixResourceSprite->Release();
 	depthStencilResource->Release();
 	textureResource->Release();
