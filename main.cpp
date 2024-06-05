@@ -1748,6 +1748,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srvDescriptorHeap->Release();
 	dsvDescriptorHeap->Release();
 	textureResource2->Release();
+	materialResourceSprite->Release();
 	directionalLightResource->Release();
 
 #ifdef _DEBUG
