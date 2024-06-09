@@ -23,17 +23,17 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 
 #include "externals/DirectXTex/DirectXTex.h"
 
+#include <fstream>
+#include <sstream>
+
 //-------------------------------------
-//
+//スライドの１７まで
+// zipのダウンロード
 //-------------------------------------
 
-//１６まで
-
-
-//cotangent(cot)、tanの逆数
-float cot(float other) {
-	return 1 / tan(other);
-}
+//-------------------------------------
+//構造体
+//-------------------------------------
 
 typedef struct {
 	float x;
@@ -88,12 +88,26 @@ typedef struct {
 }DirectionalLight;
 
 //Transform情報を作る
-struct  Transform
+typedef struct  
 {
 	Vector3 scale;
 	Vector3 rotate;
 	Vector3 translate;
-};
+}Transform;
+
+//ModelData構造体
+typedef struct {
+	std::vector<VertexData> verteces;
+}ModelData;
+
+//-------------------------------------
+//関数
+//-------------------------------------
+
+//cotangent(cot)、tanの逆数
+float cot(float other) {
+	return 1 / tan(other);
+}
 
 //単位行列を求める
 Matrix4x4 MakeIdentity4x4() {
@@ -618,6 +632,75 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 }
 
 //-------------------------------------
+//Objファイルを閉じる読み込む関数
+//-------------------------------------
+
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename) {
+	//1.必要となる変数の宣言
+	ModelData modelData;;//構築するModelData
+	std::vector<Vector4> positions;//位置
+	std::vector<Vector2> texcoords;//テクスチャの座標
+	std::vector<Vector3> normals;//法線
+	std::string line;//ファイルから読んだ一行を格納するもの
+
+	//2/ファイルを開く
+	std::ifstream file(directoryPath + "/" + filename);
+	assert(file.is_open());//開けなかったら止める
+
+	//3.ファイルを読み、ModelDataを構築
+	while (std::getline(file, line)) {
+		//streamから１行読んでstd::stringに格納する関数。whileでファイルの最後まで１行ずつ読み込んでいく
+		std::string identifier;
+		//文字列を分析しながら読むためのクラス、空白を区切り文字として読んでいくことができる
+		std::istringstream s(line);
+		//先頭の識別子を読む
+		s >> identifier;
+
+		//identifierに応じた処理
+		//"v":頂点位置
+		//"vt":頂点テクスチャ座標
+		//"vn":頂点法線
+		//"f":面
+		if (identifier == "v") {
+			Vector4 position;
+			s >> position.x >> position.x >> position.z;
+			position.w = 1.0f;
+			positions.push_back(position);
+		} else if(identifier=="vt") {
+			Vector2 texcoord;
+			s >> texcoord.x >> texcoord.y;
+			texcoords.push_back(texcoord);
+		} else if (identifier == "vn") {
+			Vector3 normal;
+			s >> normal.x >> normal.y >> normal.z;
+			normals.push_back(normal);
+		} else if (identifier == "f") {
+			//三角形を作る
+			//面は三角形限定。その他は未対応
+			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex) {
+				std::string vertexDefinition;
+				s >> vertexDefinition;
+				//頂点の要素へのIndexは「位置/UV/法線」で格納されてるので、　分解してIndexを取得する
+				std::istringstream v(vertexDefinition);
+				uint32_t elementIndices[3];
+				for (int32_t element = 0; element < 3; ++element) {
+					std::string index;
+					//区切りでインデックスを読んでいく
+					std::getline(v, index, '/');
+				}
+				//要素へのIndexから、実際の要素の値を取得して、頂点を構築する
+				Vector4 position = positions[elementIndices[0] - 1];
+				Vector2 texcoord = texcoords[elementIndices[1] - 1];
+				Vector3 normal = normals[elementIndices[2] - 1];
+				VertexData vertex = { position,texcoord,normal };
+				modelData.verteces.push_back(vertex);
+				return modelData;
+			}
+		}
+	}
+}
+
+//-------------------------------------
 //main関数
 //-------------------------------------
 
@@ -1112,6 +1195,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 	//-------------------------------------
+	//球を作成ための頂点を作成する
+	//-------------------------------------
+
+	//-------------------------------------
 	//VertexResourceを生成する
 	//-------------------------------------
 	//球の分割数
@@ -1226,10 +1313,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 
 	//-------------------------------------
-//矩形を描画するためのVertexResource
-//-------------------------------------
+	//矩形を描画するためのVertexResource
+	//-------------------------------------
 
-//Sprite用の頂点リソースを作る
+	//Sprite用の頂点リソースを作る
 	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 4);
 
 	//-------------------------------------
@@ -1304,6 +1391,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	indexDataSprite[4] = 3;
 	//右下
 	indexDataSprite[5] = 2;
+
+	//-------------------------------------
+	//ModelDataを使ったResourceの作成
+	//-------------------------------------
+
+	//モデル読み込み
+	ModelData modelData = LoadObjFile("resources", "plane.obj");
+	//頂点リソースを作る
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * modelData.verteces.size());
+	//頂点バッファビューを作成する
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+	//リソースの先頭アドレスから使う
+	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
+	//使用するリソースのサイズは頂点のサイズ
+	vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * modelData.verteces.size());
+	//１頂点当たりのサイズ
+	vertexBufferView.StrideInBytes = sizeof(VertexData);
+
+	//頂点リソースにデータを書き込む
+	VertexData* vertexData = nullptr;
+	//書き込むためのアドレスを取得
+	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	//頂点データをリソースにコピー
+	std::memcpy(vertexData, modelData.verteces.data(), sizeof(VertexData)* modelData.verteces.size());
+
+
 	//-------------------------------------
     //Material用のResourceを作る
     //-------------------------------------
@@ -1649,7 +1762,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
 			//描画！（DrawCall/ドローコール）。３頂点で１つのインスタンス。
-			commandList->DrawInstanced(static_cast<size_t>(kSubdivision * kSubdivision) * 6, 1, 0, 0);
+			//commandList->DrawInstanced(static_cast<size_t>(kSubdivision * kSubdivision) * 6, 1, 0, 0);
+			commandList->DrawInstanced(UINT(modelData.verteces.size()), 1, 0, 0);
 
 			//-------------------------------------
 		    //矩形の描画コマンドを積む
@@ -1669,7 +1783,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
 
 			//描画！（DrawCall/ドローコール)
-			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			//commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 
 			//-------------------------------------
