@@ -1380,7 +1380,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 
 	//モデル読み込み
-	ModelData modelData = LoadObjFile("resource", "axis.obj");
+	ModelData modelData = LoadObjFile("resource", "plane.obj");
 	//頂点リソースを作る
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * modelData.vertices.size());
 	//頂点バッファビューを作成する
