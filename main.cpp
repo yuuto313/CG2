@@ -1380,7 +1380,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 
 	//モデル読み込み
-	ModelData modelData = LoadObjFile("resource", "plane.obj");
+	ModelData modelData = LoadObjFile("resource", "axis.obj");
 	//頂点リソースを作る
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * modelData.vertices.size());
 	//頂点バッファビューを作成する
@@ -1731,6 +1731,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
 			//ImGui::ShowDemoWindow();
 			ImGui::DragFloat3("CameraTranslate", &cameraTransform.translate.x, 0.05f);
+			ImGui::SliderAngle("CameraRotateX", &cameraTransform.rotate.x);
+			ImGui::SliderAngle("CameraRotateY", &cameraTransform.rotate.y);
+			ImGui::SliderAngle("CameraRotateZ", &cameraTransform.rotate.z);
+
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
 			ImGui::DragFloat3("DirectionalLight.direction", &directionalLightData->direction.x, 0.01f);
