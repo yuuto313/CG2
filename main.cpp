@@ -738,8 +738,8 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 				Vector2 texcoord = texcoords[elementIndices[1] - 1];
 				Vector3 normal = normals[elementIndices[2] - 1];
 				//右手系から左手系へ変換するためｘを反転させる
-				position.x *= -1.0f;
-				normal.x *= -1.0f;
+				//position.x *= -1.0f;
+				//normal.x *= -1.0f;
 				texcoord.y = 1.0f - texcoord.y;
 				//VertexData vertex = { position,texcoord,normal };
 				//modelData.verteces.push_back(vertex);
@@ -1380,7 +1380,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 
 	//モデル読み込み
-	ModelData modelData = LoadObjFile("resource", "plane.obj");
+	ModelData modelData = LoadObjFile("resource", "axis.obj");
 	//頂点リソースを作る
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * modelData.vertices.size());
 	//頂点バッファビューを作成する
