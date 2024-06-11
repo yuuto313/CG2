@@ -1,4 +1,6 @@
 #include <d3d12.h>
+#include <wrl.h>
+
 #pragma once
 /// <summary>
 /// ID3D12Resourceを自動で開放するクラス
@@ -6,17 +8,17 @@
 class ResourceObject
 {
 public:
-	ResourceObject(ID3D12Resource* resource) :resource_(resource) {};
+	ResourceObject(Microsoft::WRL::ComPtr<ID3D12Resource> resource) :resource_(resource) {};
 	~ResourceObject() {
 		if (resource_) {
-			resource_->Release();
+			//resource_->Release();
 		}
 	};
 
-	ID3D12Resource* Get() {
+	Microsoft::WRL::ComPtr<ID3D12Resource> Get() {
 		return resource_;
 	}
 private:
-	ID3D12Resource* resource_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
 };
 

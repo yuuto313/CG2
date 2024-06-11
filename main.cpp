@@ -103,6 +103,24 @@ typedef struct {
 	MaterialData material;
 }ModelData;
 
+struct D3DResourceLeakCheker {
+	~D3DResourceLeakCheker() 
+	{
+		//-------------------------------------
+		//ReportLiveObjects（解放を忘れたときに警告を表示するようにする）
+		//-------------------------------------
+
+		//リリースリークチェック
+		Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
+
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
+			debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+			debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+			debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
+			//debug->Release();
+		}
+	}
+};
 
 //-------------------------------------
 //関数
@@ -460,7 +478,7 @@ IDxcBlob* CompileShader(
 //Resource作成の関数化
 //-------------------------------------
 
-Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(Microsoft::WRL::ComPtr<ID3D12Device> device, const size_t sizeInBytes) {
+Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(Microsoft::WRL::ComPtr<ID3D12Device> device, const size_t& sizeInBytes) {
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;//uploadHeapを使う
 	//頂点リソースの設定
@@ -486,7 +504,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(Microsoft::WRL::ComP
 //DescriptorHeap作成の関数化
 //-------------------------------------
 
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, const D3D12_DESCRIPTOR_HEAP_TYPE heapType,const UINT numDescriptors, bool shaderVisible)
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, const D3D12_DESCRIPTOR_HEAP_TYPE& heapType,const UINT& numDescriptors, bool shaderVisible)
 {
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap = nullptr;
 	D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
@@ -765,6 +783,12 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 //windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
+	D3DResourceLeakCheker leakCheck;
+
+	//DXGIファクトリーの生成
+	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Device> device = nullptr;
+
 	//-------------------------------------
 	//COM（Component　Object　Model）の初期化
 	//-------------------------------------
@@ -836,9 +860,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//ウィンドウを表示する
 	ShowWindow(hwnd, SW_SHOW);
 
-	//DXGIファクトリーの生成
-	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory = nullptr;
-
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 
 	assert(SUCCEEDED(hr));
@@ -861,9 +882,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 	//適切なアダプタが見つからなかったので起動できない
 	assert(useAdapter != nullptr);
-
-	Microsoft::WRL::ComPtr<ID3D12Device> device = nullptr;
-
 
 
 	//機能レベルとログ出力用の文字列
@@ -918,7 +936,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		infoQueue->PushStorageFilter(&filter);
 
 		//解放
-		infoQueue->Release();
+		//infoQueue->Release();
 
 	}
 #endif
@@ -1794,8 +1812,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//-------------------------------------
 
 			//描画用ディスクリプタヒープの設定
-			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap*> descriptorHeaps[] = { srvDescriptorHeap.Get()};
-			commandList->SetDescriptorHeaps(1, descriptorHeaps->Get());
+			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeaps[] = { srvDescriptorHeap.Get()};
+			commandList->SetDescriptorHeaps(1, descriptorHeaps->GetAddressOf());
 
 			//-------------------------------------
 	        //コマンドを積んで描画
@@ -1941,7 +1959,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 
 #ifdef _DEBUG
-	debugController->Release();
+	//debugController->Release();
 #endif 
 
 	CloseWindow(hwnd);
@@ -1951,11 +1969,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 
 	//リリースリークチェック
-	Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
-	debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
-	debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
-	debug->Release();
-}
+	/*Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
+
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
+		debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
+		debug->Release();
+	}*/
+
 
 	return 0;
 }
