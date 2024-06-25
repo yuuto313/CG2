@@ -747,9 +747,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 	CoInitializeEx(0, COINIT_MULTITHREADED);
 
-	
-
-
 #ifdef _DEBUG
 
 

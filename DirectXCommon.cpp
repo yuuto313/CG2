@@ -5,6 +5,8 @@
 void DirectXCommon::Initialize(Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory, HRESULT hr, Microsoft::WRL::ComPtr<ID3D12Device> device)
 {
 
+	hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
+
 	//-------------------------------------
 	//使用するアダプタ(GPU)を決める
 	//-------------------------------------
