@@ -13,7 +13,7 @@ class DirectXCommon
 {
 public:
 	
-	void Initialize(IDXGIFactory7* dxgiFactory, HRESULT hr,ID3D12Device* device);
+	void Initialize(Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory, HRESULT hr, Microsoft::WRL::ComPtr<ID3D12Device> device);
 
 private:
 

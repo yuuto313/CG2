@@ -2,7 +2,7 @@
 #include "Debug.h"
 #include <format>
 
-void DirectXCommon::Initialize(IDXGIFactory7* dxgiFactory, HRESULT hr,ID3D12Device* device)
+void DirectXCommon::Initialize(Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory, HRESULT hr, Microsoft::WRL::ComPtr<ID3D12Device> device)
 {
 
 	//-------------------------------------
@@ -20,7 +20,7 @@ void DirectXCommon::Initialize(IDXGIFactory7* dxgiFactory, HRESULT hr,ID3D12Devi
 		//ソフトウェアアダプタでなければ採用
 		if(!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)){
 			//採用したアダプタの方法をログに出力、wstringのほうなので注意
-			Debug::Log(Debug::ConvertString(std::format(L"Use Adapter:{}\n", adapterDesc.Description));
+			Debug::Log(Debug::ConvertString(std::format(L"Use Adapter:{}\n", adapterDesc.Description)));
 			break;
 		}
 		//ソフトウェアアダプタの場合は見なかったことにする
@@ -33,6 +33,24 @@ void DirectXCommon::Initialize(IDXGIFactory7* dxgiFactory, HRESULT hr,ID3D12Devi
 	// D3D12Deviceの生成
 	//-------------------------------------
 
-
-
+	//機能レベルとログ出力用の文字列
+	D3D_FEATURE_LEVEL featureLevels[] = {
+		D3D_FEATURE_LEVEL_12_2,D3D_FEATURE_LEVEL_12_1,D3D_FEATURE_LEVEL_12_0
+	};
+	const char* featureLevelStrings[] = { "12.2","12.1","12.0" };
+	//高い順に生成できるか試す
+	for (size_t i = 0; i < _countof(featureLevels); ++i) {
+		//採用したアダプタでデバイスを生成
+		hr = D3D12CreateDevice(useAdapter.Get(), featureLevels[i], IID_PPV_ARGS(&device));
+		//指定した機能レベルでデバイスが生成出来たか確認
+		if (SUCCEEDED(hr)) {
+			//生成できたのでログ出力を行ってループを抜ける
+			Debug::Log(std::format("FeatureLevel:{}\n", featureLevelStrings[i]));
+			break;
+		}
+	}
+	//デバイスの生成がうまくいかなかったので起動できない
+	assert(device != nullptr);
+	//初期化完了のログを出す
+	Debug::Log("Complete createD3D12Device!!!\n");
 }
