@@ -23,6 +23,9 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 
 #include "externals/DirectXTex/DirectXTex.h"
 
+#include <xaudio2.h>
+#pragma comment(lib,"xaudio2.lib")
+
 #include <fstream>
 #include <sstream>
 
@@ -120,6 +123,44 @@ struct D3DResourceLeakCheker {
 			//debug->Release();
 		}
 	}
+};
+
+//チャンクヘッダ
+struct  ChunkHeader
+{
+	//チャンク毎のID
+	char id[4];
+	//チャンクサイズ
+	int32_t size;
+};
+
+//RIFFヘッダチャンク
+struct RiffHeader 
+{
+	//"RIFF"
+	ChunkHeader chunk;
+	//"WAVE"
+	char type[4];
+};
+
+//FMTチャンク
+struct FormatChunk 
+{
+	//"fmt"
+	ChunkHeader chunk;
+	//フォーマット
+	WAVEFORMATEX fmt;
+};
+
+//音声データ
+struct SoundData
+{
+	//波形フォーマット
+	WAVEFORMATEX wfex;
+	//バッファの先頭アドレス
+	BYTE* pBuffer;
+	//バッファのサイズ
+	unsigned int bufferSize;
 };
 
 //-------------------------------------
@@ -774,7 +815,119 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 	return modelData;
 }
 
+//-------------------------------------
+//音声データの読み込み
+//-------------------------------------
 
+SoundData SoundLoadWave(const char* filename) {
+
+	HRESULT result;
+
+	//1.ファイルオープン
+	
+	//ファイル入力ストリームのインスタンス
+	std::ifstream file;
+	//.wavファイルをバイナリモードで開く
+	file.open(filename, std::ios_base::binary);
+	//ファイルオープン失敗を検出する
+	assert(file.is_open());
+
+	//2.wavデータ読み込み
+
+	//Riffヘッダーの読み込み
+	RiffHeader riff;
+	file.read((char*)&riff, sizeof(riff));
+	//ファイルがRIFFかチェック
+	if (strncmp(riff.chunk.id, "RIFF", 4) != 0) {
+		assert(0);
+	}
+	//タイプがWAVEかチェック
+	if (strncmp(riff.type, "WAVE", 4) != 0) {
+		assert(0);
+	}
+
+	//Formatチャンクの読み込み
+	FormatChunk format = {};
+	//チャンクヘッダーの確認
+	file.read((char*)&format, sizeof(ChunkHeader));
+	if (strncmp(format.chunk.id, "fmt", 4) == 0) {
+		assert(0);
+	}
+	//チャンク本体の読み込み
+	assert(format.chunk.size, <= sizeof(format.fmt));
+	file.read((char*)&format.fmt, format.chunk.size);
+
+	//Dataチャンクの読み込み
+	ChunkHeader data;
+	file.read((char*)&data, sizeof(data));
+	//JUNKチャンクを検索した場合
+	if (strncmp(data.id, "JUNK", 4) == 0) {
+		//読み取り位置をJUNKチャンク位置まで進める
+		file.seekg(data.size, std::ios_base::cur);
+		//再読み込み
+		file.read((char*)&data, sizeof(data));
+	}
+
+	if (strncmp(data.id, "data", 4) != 0) {
+		assert(0);
+	}
+
+	//Dataチャンクのデータ部（波形データ）の読み込み
+	char* pBuffer = new char[data.size];
+	file.read(pBuffer, data.size);
+
+	//3.ファイルクローズ
+
+	file.close();
+
+	//4.読み込んだ音声データをreturn
+
+	//returnするための音声データ
+	SoundData soundData = {};
+
+	soundData.wfex = format.fmt;
+	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
+	soundData.bufferSize = data.size;
+
+	return soundData;
+}
+
+//-------------------------------------
+//音声データの開放
+//-------------------------------------
+
+void SoundUnload(SoundData* soundData) {
+	//バッファのメモリを開放
+	delete[] soundData->pBuffer;
+
+	soundData->pBuffer = 0;
+	soundData->bufferSize = 0;
+	soundData->wfex = {};
+}
+
+//-------------------------------------
+//サウンドの生成
+//-------------------------------------
+
+void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
+	HRESULT result;
+
+	//波形フォーマットをもとにSourceVoiceの生成
+	IXAudio2SourceVoice* pSourceVoice = nullptr;
+	result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
+	assert(SUCCEEDED(result));
+
+	//再生する波形データの設定
+	XAUDIO2_BUFFER buf{};
+	buf.pAudioData = soundData.pBuffer;
+	buf.AudioBytes = soundData.bufferSize;
+	buf.Flags = XAUDIO2_END_OF_STREAM;
+
+	//波形データの再生
+	result = pSourceVoice->SubmitSourceBuffer(&buf);
+	result = pSourceVoice->Start();	
+
+}
 
 //-------------------------------------
 //main関数
@@ -784,6 +937,9 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	D3DResourceLeakCheker leakCheck;
+	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
+	IXAudio2MasteringVoice* masterVoice;
+
 
 	//DXGIファクトリーの生成
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory = nullptr;
@@ -875,7 +1031,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//ソフトウェアアダプタでなければ採用！
 		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
 			//採用したアダプタの情報をログに出力、wstringの方なので注意
-			Log(ConvertString(std::format(L"USE Adapter:{}\n", adapterDesc.Description))); //???
+			Log(ConvertString(std::format(L"USE Adapter:{}\n", adapterDesc.Description))); 
 			break;
 		}
 		useAdapter = nullptr; //ソフトウェアアダプタの場合は見なかったことにする
@@ -1271,123 +1427,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 	//-------------------------------------
-	//球を作成ための頂点を作成する
+	//XAudio2エンジンのインスタンスを生成
 	//-------------------------------------
-	{
-		////-------------------------------------
-		////VertexResourceを生成する
-		////-------------------------------------
-		////球の分割数
-		//const uint32_t kSubdivision = 16;
-		//ID3D12Resource* vertexResource = CreateBufferResource(device, static_cast<size_t>(kSubdivision * kSubdivision) * 6 * sizeof(VertexData));
 
-		////-------------------------------------
-		////VertexBufferViewを作成する
-		////-------------------------------------
+	hr = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	//マスターボイスを生成
+	hr = xAudio2->CreateMasteringVoice(&masterVoice);
 
-		////頂点バッファビューを作成する
-		//D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-		////リソースの先頭のアドレスから使う
-		//vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
-		////使用するリソースのサイズは頂点３つ分のサイズ
-		//vertexBufferView.SizeInBytes = static_cast<size_t>(kSubdivision * kSubdivision) * 6 * sizeof(VertexData);
-		////１頂点当たりのサイズ
-		//vertexBufferView.StrideInBytes = sizeof(VertexData);
+	//音声読み込み
+	SoundData soundData1 = SoundLoadWave("Resources/Alarm01.wav");
+	//音楽再生
+	SoundPlayWave(xAudio2.Get(), soundData1);
 
-		////-------------------------------------
-		////Resourceにデータを書き込む
-		////-------------------------------------
-
-		////頂点リソースにデータを書き込む
-		//VertexData* vertexData = nullptr;
-		////書き込むためのアドレスを取得
-		//vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-
-		////-------------------------------------
-		////球を作成する
-		////-------------------------------------
-
-		////経度分割一つ分の角度
-		//const float kLonEvery = (2 * (static_cast<float>(M_PI))) / kSubdivision;
-		////緯度分割一つ分の角度
-		//const float kLatEvery = (static_cast<float>(M_PI)) / kSubdivision;
-		////緯度の方向に分割（横方向）-π/2 ~ π/2
-		//for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-		//	float lat = -(static_cast<float>(M_PI)) / 2.0f + kLatEvery * latIndex;//現在の緯度
-		//	//経度の方向に分割（縦方向）　0~2π
-		//	for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-		//		uint32_t start = (latIndex * kSubdivision + lonIndex) * 6;
-		//		float lon = lonIndex * kLonEvery;//現在の経度
-
-		//		float u = float(lonIndex) / float(kSubdivision);
-		//		float v = 1.0f - float(latIndex) / float(kSubdivision);
-
-		//		//頂点データを入力する。基準点a
-		//		//左下
-
-		//		vertexData[start].position.x = cosf(lat) * cos(lon);
-		//		vertexData[start].position.y = sinf(lat);
-		//		vertexData[start].position.z = cosf(lat) * sinf(lon);
-		//		vertexData[start].position.w = 1.0f;
-		//		vertexData[start].texcoord = { u,v };
-		//		vertexData[start].normal.x = vertexData[start].position.x;
-		//		vertexData[start].normal.y = vertexData[start].position.y;
-		//		vertexData[start].normal.z = vertexData[start].position.z;
-
-		//		//左上
-		//		vertexData[start + 1].position.x = cosf(lat + kLatEvery) * cosf(lon);
-		//		vertexData[start + 1].position.y = sinf(lat + kLatEvery);
-		//		vertexData[start + 1].position.z = cosf(lat + kLatEvery) * sinf(lon);
-		//		vertexData[start + 1].position.w = 1.0f;
-		//		vertexData[start + 1].texcoord = { u,v - 1.0f / kSubdivision };
-		//		vertexData[start + 1].normal.x = vertexData[start + 1].position.x;
-		//		vertexData[start + 1].normal.y = vertexData[start + 1].position.y;
-		//		vertexData[start + 1].normal.z = vertexData[start + 1].position.z;
-
-		//		//右下
-		//		vertexData[start + 2].position.x = cosf(lat) * cosf(lon + kLonEvery);
-		//		vertexData[start + 2].position.y = sinf(lat);
-		//		vertexData[start + 2].position.z = cosf(lat) * sinf(lon + kLonEvery);
-		//		vertexData[start + 2].position.w = 1.0f;
-		//		vertexData[start + 2].texcoord = { u + 1.0f / kSubdivision,v };
-		//		vertexData[start + 2].normal.x = vertexData[start + 2].position.x;
-		//		vertexData[start + 2].normal.y = vertexData[start + 2].position.y;
-		//		vertexData[start + 2].normal.z = vertexData[start + 2].position.z;
-
-		//		//２枚目の三角形
-		//		//左上
-		//		vertexData[start + 3].position.x = cosf(lat + kLatEvery) * cosf(lon);
-		//		vertexData[start + 3].position.y = sinf(lat + kLatEvery);
-		//		vertexData[start + 3].position.z = cosf(lat + kLatEvery) * sinf(lon);
-		//		vertexData[start + 3].position.w = 1.0f;
-		//		vertexData[start + 3].texcoord = { u,v - 1.0f / kSubdivision };
-		//		vertexData[start + 3].normal.x = vertexData[start + 3].position.x;
-		//		vertexData[start + 3].normal.y = vertexData[start + 3].position.y;
-		//		vertexData[start + 3].normal.z = vertexData[start + 3].position.z;
-
-		//		//右上
-		//		vertexData[start + 4].position.x = cosf(lat + kLatEvery) * cosf(lon + kLonEvery);
-		//		vertexData[start + 4].position.y = sinf(lat + kLatEvery);
-		//		vertexData[start + 4].position.z = cosf(lat + kLatEvery) * sinf(lon + kLonEvery);
-		//		vertexData[start + 4].position.w = 1.0f;
-		//		vertexData[start + 4].texcoord = { u + 1.0f / kSubdivision,v - 1.0f / kSubdivision };
-		//		vertexData[start + 4].normal.x = vertexData[start + 4].position.x;
-		//		vertexData[start + 4].normal.y = vertexData[start + 4].position.y;
-		//		vertexData[start + 4].normal.z = vertexData[start + 4].position.z;
-
-		//		//右下
-		//		vertexData[start + 5].position.x = cosf(lat) * cosf(lon + kLonEvery);
-		//		vertexData[start + 5].position.y = sinf(lat);
-		//		vertexData[start + 5].position.z = cosf(lat) * sinf(lon + kLonEvery);
-		//		vertexData[start + 5].position.w = 1.0f;
-		//		vertexData[start + 5].texcoord = { u + 1.0f / kSubdivision,v };
-		//		vertexData[start + 5].normal.x = vertexData[start + 5].position.x;
-		//		vertexData[start + 5].normal.y = vertexData[start + 5].position.y;
-		//		vertexData[start + 5].normal.z = vertexData[start + 5].position.z;
-
-		//	}
-		//}
-	}
 
 	//-------------------------------------
 	//ModelDataを使ったResourceの作成
@@ -1963,6 +2014,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #endif 
 
 	CloseWindow(hwnd);
+	//XAudio2解放
+	xAudio2.Reset();
+	//音声データの解放
+	SoundUnload(&soundData1);
 
 	//-------------------------------------
 	//ReportLiveObjects（解放を忘れたときに警告を表示するようにする）
