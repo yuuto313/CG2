@@ -1239,6 +1239,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//DirectInputの初期化
 	//-------------------------------------
 
+	//全キーの入力情報を取得する
+	BYTE key[256] = {};
+	//前回の全キーの状態
+	BYTE keyPre[256] = {};
+
 	IDirectInput8* directInput = nullptr;
 	hr = DirectInput8Create(wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
 	assert(SUCCEEDED(hr));
@@ -1261,6 +1266,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//DebugCameraの初期化
 	//-------------------------------------
 
+	bool activeCamera = true;
 	DebugCamera* debugCamera = nullptr;
 	debugCamera = new DebugCamera();
 	debugCamera->Initialize();
@@ -1586,23 +1592,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//DirectXの更新
 			//-------------------------------------
 
+			//前回のキー入力を保存
+			memcpy(keyPre, key, sizeof(key));
 			//キーボード情報の取得開始
 			keyboard->Acquire();
-			//全キーの入力情報を取得する
-			BYTE key[256] = {};
+			
 			keyboard->GetDeviceState(sizeof(key), key);
 
-			//数字の0キーが押されていたら
-			if (key[DIK_0]) {
-				//出力ウィンドウに「Hit 0」と表示
-				OutputDebugStringA("Hit 0\n");
-			}
-
-			//-------------------------------------
-			//DebugCameraの更新
-			//-------------------------------------
-
-			debugCamera->Update(key);
 
 			//-------------------------------------
 			//CBufferの中身を更新する
@@ -1618,8 +1614,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			
 			//透視投影行列を計算
 			Matrix4x4 projectionMatrix = MyMath::MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.f);
-			Matrix4x4 worldViewProjectionMatrix = MyMath::Multiply(worldMatrix, MyMath::Multiply(debugCamera->GetViewMatrix(), projectionMatrix));
-			wvpData->WVP = worldViewProjectionMatrix;
+
+			Matrix4x4 worldViewProjectionMatrix = MyMath::Multiply(worldMatrix, MyMath::Multiply(viewMatrix, projectionMatrix));
+			Matrix4x4 worldViewProjectionMatrix2 = MyMath::Multiply(worldMatrix, MyMath::Multiply(debugCamera->GetViewMatrix(), projectionMatrix));
+
+			//カメラ切り替え
+			if (key[DIK_C] && !keyPre[DIK_C]) {
+				if (activeCamera) {
+					activeCamera = false;
+				} else {
+					activeCamera = true;
+				}
+			}
+
+			if (activeCamera) {
+				//デバッグカメラモード
+				debugCamera->Update(key);
+				wvpData->WVP = worldViewProjectionMatrix2;
+			} else {
+				//ゲームカメラ
+				wvpData->WVP = worldViewProjectionMatrix;
+			}
+
 			wvpData->World = worldMatrix;
 
 			//-------------------------------------
