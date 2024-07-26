@@ -1610,14 +1610,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//WVPMatrixを作成して設定する
 			//-------------------------------------
 			Matrix4x4 cameraMatrix = MyMath::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrix = MyMath::Inverse(cameraMatrix);
-			
-			//透視投影行列を計算
-			Matrix4x4 projectionMatrix = MyMath::MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.f);
 
-			Matrix4x4 worldViewProjectionMatrix = MyMath::Multiply(worldMatrix, MyMath::Multiply(viewMatrix, projectionMatrix));
-			Matrix4x4 worldViewProjectionMatrix2 = MyMath::Multiply(worldMatrix, MyMath::Multiply(debugCamera->GetViewMatrix(), projectionMatrix));
-
+			//各オブジェクトの描画に使ってるビュー行列にデバッグカメラのビュー行列を適用する
+			Matrix4x4 viewMatrix = {};
 			//カメラ切り替え
 			if (key[DIK_C] && !keyPre[DIK_C]) {
 				if (activeCamera) {
@@ -1630,12 +1625,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			if (activeCamera) {
 				//デバッグカメラモード
 				debugCamera->Update(key);
-				wvpData->WVP = worldViewProjectionMatrix2;
+				viewMatrix = debugCamera->GetViewMatrix();
 			} else {
-				//ゲームカメラ
-				wvpData->WVP = worldViewProjectionMatrix;
-			}
+				//ゲームカメラ 
+				viewMatrix = MyMath::Inverse(cameraMatrix);
 
+			}
+			
+			//透視投影行列を計算
+			Matrix4x4 projectionMatrix = MyMath::MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.f);
+
+			Matrix4x4 worldViewProjectionMatrix = MyMath::Multiply(worldMatrix, MyMath::Multiply(viewMatrix, projectionMatrix));
+
+			wvpData->WVP = worldViewProjectionMatrix;
 			wvpData->World = worldMatrix;
 
 			//-------------------------------------
@@ -1671,11 +1673,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::SliderAngle("SphereRotateX", &transform.rotate.x);
 			ImGui::SliderAngle("SphereRotateY", &transform.rotate.y);
 			ImGui::SliderAngle("SphereRotateZ", &transform.rotate.z);
-
-			/*ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.f);
-			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.f);
-			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);*/
-
 
 			//-------------------------------------
 			//ライトの向きを正規化
