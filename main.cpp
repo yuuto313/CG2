@@ -5,16 +5,16 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+//DirectInputのバージョン指定
+#define DIRECTINPUT_VERSION 0x0800	
+#include <dinput.h>
+
 #include <d3d12.h>
-#pragma comment(lib,"d3d12.lib")
 #include <dxgi1_6.h>
-#pragma comment(lib,"dxgi.lib")
 #include <cassert>
 #include <dxgidebug.h>
-#pragma comment(lib,"dxguid.lib")
-
 #include <dxcapi.h>
-#pragma comment(lib,"dxcompiler.lib")
+#include <xaudio2.h>
 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
@@ -23,8 +23,13 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 
 #include "externals/DirectXTex/DirectXTex.h"
 
-#include <xaudio2.h>
+#pragma comment(lib,"d3d12.lib")
+#pragma comment(lib,"dxgi.lib")
+#pragma comment(lib,"dxguid.lib")
+#pragma comment(lib,"dxcompiler.lib")
 #pragma comment(lib,"xaudio2.lib")
+#pragma comment(lib,"dinput8.lib")
+#pragma comment(lib,"dxguid.lib")
 
 #include <fstream>
 #include <sstream>
@@ -1439,6 +1444,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//音楽再生
 	SoundPlayWave(xAudio2.Get(), soundData1);
 
+	//-------------------------------------
+	//DirectInputの初期化
+	//-------------------------------------
+
+	IDirectInput8* directInput = nullptr;
+	hr = DirectInput8Create(wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
+	assert(SUCCEEDED(hr));
+
+	//キーボードデバイスの生成
+	IDirectInputDevice8* keyboard = nullptr;
+	hr = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
+	assert(SUCCEEDED(hr));
+
+	//入力データ形式のセット
+	//標準形式
+	hr = keyboard->SetDataFormat(&c_dfDIKeyboard);
+	assert(SUCCEEDED(hr));
+
+	//排他制御レベルのセット
+	hr = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+	assert(SUCCEEDED(hr));
+
 
 	//-------------------------------------
 	//ModelDataを使ったResourceの作成
@@ -1757,6 +1784,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		}
 		else {
+			//-------------------------------------
+			//DirectXの更新
+			//-------------------------------------
+
+			//キーボード情報の取得開始
+			keyboard->Acquire();
+			//全キーの入力情報を取得する
+			BYTE key[256] = {};
+			keyboard->GetDeviceState(sizeof(key), key);
+
+			//数字の0キーが押されていたら
+			if (key[DIK_0]) {
+				//出力ウィンドウに「Hit 0」と表示
+				OutputDebugStringA("Hit 0\n");
+			}
+
 			//-------------------------------------
 			//CBufferの中身を更新する
 			//-------------------------------------
