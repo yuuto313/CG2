@@ -19,6 +19,20 @@ struct Vector3 final {
 		x += v.x, y += v.y, z += v.z;
 		return *this;
 	}
+
+	// 複合代理演算子
+	Vector3 operator+(const Vector3& v) {
+		x + v.x, y + v.y, z + v.z;
+		return *this;
+	}
+
+	Vector3 operator*(float scalar) const {
+		return Vector3{ x * scalar, y * scalar, z * scalar };
+	}
+
+	Vector3 operator-(const Vector3& other) const {
+		return Vector3{ x - other.x, y - other.y, z - other.z };
+	}
 };
 
 struct Vector4 final {
@@ -41,6 +55,9 @@ namespace MyMath
 	//-------------------------------------
 	//関数
 	//-------------------------------------
+
+	//線形補間
+	Vector3 Lerp(const Vector3& a, const Vector3& b, float t);
 
 	//cotangent(cot)、tanの逆数
 	float cot(float other);
@@ -89,4 +106,7 @@ namespace MyMath
 	// ベクトル変換
 	// ベクトルの向きだけを回転させるため、4x4行列の平行移動成分を打ち消して、回転（とスケーリング）のみ反映させたもの
 	Vector3 TransformNormal(const Vector3& v, const Matrix4x4& m);
+
+	// イージング関数
+	float EaseOutQuad(float t);
 };

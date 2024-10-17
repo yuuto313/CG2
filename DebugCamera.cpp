@@ -1,15 +1,25 @@
 #include "DebugCamera.h"
+#include <time.h>
 
 void DebugCamera::Initialize()
 {
+	shake_ = new Shake();
+	shake_->Initialize(translation_);
+
 	rotation_ = { 0,0,0 };
 	translation_ = { 0,0,-50 };
 	viewMatrix_ = {};
 	projectionMatrix_ = {};
+	isActive_ = false;
+	isReturning_ = false;
+
+	srand(static_cast<unsigned int>(time(0)));
+
 }
 
 void DebugCamera::Update(BYTE key[256])
 {
+
 	//入力によるカメラの移動や回転
 	//前後移動
 	if (key[DIK_W]) {
@@ -61,9 +71,28 @@ void DebugCamera::Update(BYTE key[256])
 		translation_ += move;
 	}
 
-	//回転
+	// シェイクを開始する
+	if (key[DIK_K] && !isActive_) {
+		isActive_ = true;
+		shake_->SetValue(translation_);
+	}
 
+	// シェイク処理
+	if (isActive_) {
+		shake_->AddTimer(0.016f);
+		if (shake_->GetTimer() <= shake_->GetDuration()) {
+			Vector3 shakeOffset = shake_->ApplyRandomShake();
+			translation_ += shakeOffset;
+		} else {
+			isActive_ = false;
+			isReturning_ = true;
+		}
+	}
 
+	if (isReturning_) {
+		translation_ = shake_->ResetPosition();
+		isReturning_ = false;
+	}
 
 	//ビュー行列の更新
 	//角度から回転行列を作成する
@@ -75,6 +104,5 @@ void DebugCamera::Update(BYTE key[256])
 
 	//ワールド行列の逆行列をビュー行列に代入する
 	viewMatrix_ = MyMath::Inverse(worldMatrix);
-
 
 }

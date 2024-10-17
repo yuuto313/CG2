@@ -2,6 +2,11 @@
 #include <math.h>
 #include <format>
 
+Vector3 MyMath::Lerp(const Vector3& a, const Vector3& b, float t)
+{
+	return a * t + b * (1.0f - t);
+}
+
 //cotangent(cot)、tanの逆数
 float MyMath::cot(float other) {
 	return 1 / tan(other);
@@ -205,4 +210,9 @@ Vector3 MyMath::TransformNormal(const Vector3& v, const Matrix4x4& m)
 		v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2],
 	};
 	return result;
+}
+
+float MyMath::EaseOutQuad(float t)
+{
+	return 1 - (1 - t) * (1 - t);
 }
