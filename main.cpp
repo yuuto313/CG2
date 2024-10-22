@@ -1665,7 +1665,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	        //-------------------------------------
 			//開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
 			//ImGui::ShowDemoWindow();
-			ImGui::DragFloat3("CameraTranslate", &cameraTransform.translate.x, 0.05f);
+			/*ImGui::DragFloat3("CameraTranslate", &cameraTransform.translate.x, 0.05f);
 			ImGui::SliderAngle("CameraRotateX", &cameraTransform.rotate.x);
 			ImGui::SliderAngle("CameraRotateY", &cameraTransform.rotate.y);
 			ImGui::SliderAngle("CameraRotateZ", &cameraTransform.rotate.z);
@@ -1676,7 +1676,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			ImGui::SliderAngle("SphereRotateX", &transform.rotate.x);
 			ImGui::SliderAngle("SphereRotateY", &transform.rotate.y);
-			ImGui::SliderAngle("SphereRotateZ", &transform.rotate.z);
+			ImGui::SliderAngle("SphereRotateZ", &transform.rotate.z);*/
+
+			ImGui::Begin("Shake");
+			ImGui::Text("1 : randam , 2 : vertical , 3 : holizonal");
+			ImGui::End();
 
 			//-------------------------------------
 			//ライトの向きを正規化

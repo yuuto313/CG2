@@ -72,19 +72,19 @@ void DebugCamera::Update(BYTE key[256], BYTE preKey[256])
 	}
 
 	// シェイクを開始する
-	if (key[DIK_K] && !preKey[DIK_K] && !isShakeing_) {
+	if (key[DIK_1] && !preKey[DIK_1] && !isShakeing_) {
 		isShakeing_ = true;
 		shake_->SetValue(translation_, 0.075f);
 	}
 
 	// 縦揺れを開始する
-	if (key[DIK_V] && !preKey[DIK_V] && !isVertical_) {
+	if (key[DIK_2] && !preKey[DIK_2] && !isVertical_) {
 		isVertical_ = true;
 		shake_->SetValue(translation_,0.15f);
 	}
 
 	// 横揺れを開始する
-	if (key[DIK_H] && !preKey[DIK_H] && !isHorizontal_) {
+	if (key[DIK_3] && !preKey[DIK_3] && !isHorizontal_) {
 		isHorizontal_ = true;
 		shake_->SetValue(translation_,0.15f);
 	}
