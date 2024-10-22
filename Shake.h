@@ -29,18 +29,18 @@ public:
 	/// <summary>
 	/// 渦を巻くシェイク
 	/// </summary>
-	void SpiralShake();
+	Vector3 SpiralShake();
+
+	/// <summary>
+	/// 回転シェイク
+	/// </summary>
+	/// <returns></returns>
+	Vector3 ApplyRotationShake();
 
 	/// <summary>
 	/// 位置を戻す
 	/// </summary>
 	Vector3 ResetPosition();
-	
-	/// <summary>
-	/// シェイクフラグのゲッター
-	/// </summary>
-	/// <returns></returns>
-	bool GetIsActive()const { return isActive_; }
 
 	/// <summary>
 	/// タイマーの値を取得
@@ -65,6 +65,11 @@ public:
 	/// </summary>
 	void SetValue(const Vector3& translation);
 
+	/// <summary>
+	/// シェイクの強度を調整
+	/// </summary>
+	void CalculateShakeIntensity();
+
 private:
 	// メンバ変数
 
@@ -73,21 +78,24 @@ private:
 	// 元のローカル座標
 	Vector3 originalTranslation_ = {};
 
-	// 有効かどうか
-	bool isActive_ = false;
-	// 元の位置に戻っているかどうか
-	bool isReturning_ = false;
 	// 持続時間
 	float duration_ = 0.0f;
 	// 経過時間
 	float timer_ = 0.0f;
 	// 強度
 	float intensity_ = 0.5f;
-	
+	// シェイク全体の進行状況を示す値（0は開始、1は終了）
+	float progress_ = 0.0f;
+	// 進行状況に基づいて減少した後の強度
+	float currentIntensity_ = 0.0f;
 
 	// 渦を巻く振動のための変数
 	float spiralRadius_ = {};
 	float spiralAngle_ = {};
+
+	// 回転シェイク用のメンバ変数
+	float rotationIntensity_ = 0.1f; // 回転の強度
+	float rotationAngle_ = 0.0f; // 現在の回転角度
 
 };
 

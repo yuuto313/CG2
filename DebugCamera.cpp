@@ -7,13 +7,14 @@ void DebugCamera::Initialize()
 	shake_->Initialize(translation_);
 
 	rotation_ = { 0,0,0 };
-	translation_ = { 0,0,-50 };
+	translation_ = { 0,0,-10 };
 	viewMatrix_ = {};
 	projectionMatrix_ = {};
-	isActive_ = false;
+	isShakeing_ = false;
+	isVertical_ = false;
 	isReturning_ = false;
-
-	srand(static_cast<unsigned int>(time(0)));
+	isHorizontal_ = false;
+	isSpiral_ = false;
 
 }
 
@@ -72,23 +73,78 @@ void DebugCamera::Update(BYTE key[256])
 	}
 
 	// シェイクを開始する
-	if (key[DIK_K] && !isActive_) {
-		isActive_ = true;
+	if (key[DIK_K] && !isShakeing_) {
+		isShakeing_ = true;
+		shake_->SetValue(translation_);
+	}
+
+	// 縦揺れを開始する
+	if (key[DIK_V] && !isVertical_) {
+		isVertical_ = true;
+		shake_->SetValue(translation_);
+	}
+
+	// 横揺れを開始する
+	if (key[DIK_H] && !isHorizontal_) {
+		isHorizontal_ = true;
+		shake_->SetValue(translation_);
+	}
+
+	// 渦巻きシェイクを開始する
+	if (key[DIK_L] && !isSpiral_) {
+		isSpiral_ = true;
 		shake_->SetValue(translation_);
 	}
 
 	// シェイク処理
-	if (isActive_) {
+	if (isShakeing_) {
 		shake_->AddTimer(0.016f);
 		if (shake_->GetTimer() <= shake_->GetDuration()) {
 			Vector3 shakeOffset = shake_->ApplyRandomShake();
 			translation_ += shakeOffset;
 		} else {
-			isActive_ = false;
+			isShakeing_ = false;
 			isReturning_ = true;
 		}
 	}
 
+	// 縦揺れ処理
+	if (isVertical_) {
+		shake_->AddTimer(0.016f);
+		if (shake_->GetTimer() <= shake_->GetDuration()) {
+			Vector3 shakeOffset = shake_->ApplyVerticalShake();
+			translation_ += shakeOffset;
+		} else {
+			isVertical_ = false;
+			isReturning_ = true;
+		}
+	}
+
+	// 横揺れ処理
+	if (isHorizontal_) {
+		shake_->AddTimer(0.016f);
+		if (shake_->GetTimer() <= shake_->GetDuration()) {
+			Vector3 shakeOffset = shake_->ApplyHorizontalShake();
+			translation_ += shakeOffset;
+		} else {
+			isHorizontal_ = false;
+			isReturning_ = true;
+		}
+	}
+
+	// 渦巻きシェイク処理
+	if (isSpiral_) {
+		shake_->AddTimer(0.016f);
+		if (shake_->GetTimer() <= shake_->GetDuration()) {
+			Vector3 shakeOffset = shake_->SpiralShake();
+			translation_ += shakeOffset;
+		} else {
+			isSpiral_ = false;
+			isReturning_ = true;
+		}
+	}
+
+	// シェイクが終わったらカメラの位置を初期位置に戻す
 	if (isReturning_) {
 		translation_ = shake_->ResetPosition();
 		isReturning_ = false;
@@ -106,3 +162,4 @@ void DebugCamera::Update(BYTE key[256])
 	viewMatrix_ = MyMath::Inverse(worldMatrix);
 
 }
+

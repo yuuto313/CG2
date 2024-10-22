@@ -7,6 +7,12 @@
 struct Vector2 final {
 	float x;
 	float y;
+
+	// 複合代理演算子
+	Vector2 operator+=(const Vector2& v) {
+		x += v.x, y += v.y;
+		return *this;
+	}
 };
 
 struct Vector3 final {
@@ -67,6 +73,9 @@ namespace MyMath
 	// 積
 	Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2);
 
+	// 積
+	Matrix3x3 Multiply(const Matrix3x3& m1, const Matrix3x3& m2);
+
 	//長さ
 	float Length(const Vector3& v);
 
@@ -79,6 +88,8 @@ namespace MyMath
 	// 平行移動
 	Matrix4x4 MakeTranslateMatrix(const Vector3& translate);
 
+	Matrix3x3 MakeTranslateMatrix(const Vector2& translate);
+
 	// 拡縮
 	Matrix4x4 MakeScaleMatrix(const Vector3& scale);
 
@@ -86,8 +97,11 @@ namespace MyMath
 	Matrix4x4 MakeRotateXMatrix(float radian);
 	// Y軸回転行列
 	Matrix4x4 MakeRotateYMatrix(float radian);
+
 	// Z軸回転行列
 	Matrix4x4 MakeRotateZMatrix(float radian);
+
+	Matrix3x3 MakeRotateZMatrix3x3(float radian);
 
 	//回転行列をX,Y,Zで合成
 	Matrix4x4 MakeRotateMatrix(Vector3 rotation);

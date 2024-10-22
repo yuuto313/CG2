@@ -6,6 +6,8 @@
 #include <math.h>
 #include "MyMath.h"
 #include "DebugCamera.h"
+#include "DebugCamera2D.h"
+
 
 //DirectInputのバージョン指定
 #define DIRECTINPUT_VERSION 0x0800	
@@ -1271,6 +1273,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	debugCamera = new DebugCamera();
 	debugCamera->Initialize();
 
+	/*DebugCamera2D* debugCamera2D = nullptr;
+	debugCamera2D = new DebugCamera2D();
+	debugCamera2D->Initialize();*/
+
 	//-------------------------------------
 	//ModelDataを使ったResourceの作成
 	//-------------------------------------
@@ -1506,7 +1512,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//-------------------------------------
 	
 	//zが-５の位置でｚ+の方向を向いているカメラ
-	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-10.0f} };
+	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-5.0f} };
 
 
 	//-------------------------------------
@@ -1613,6 +1619,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//各オブジェクトの描画に使ってるビュー行列にデバッグカメラのビュー行列を適用する
 			Matrix4x4 viewMatrix = {};
+
 			//カメラ切り替え
 			if (key[DIK_C] && !keyPre[DIK_C]) {
 				if (activeCamera) {
@@ -1626,6 +1633,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				//デバッグカメラモード
 				debugCamera->Update(key);
 				viewMatrix = debugCamera->GetViewMatrix();
+
+				/*debugCamera2D->Update(key);
+				viewMatrix = debugCamera2D->Copy3x3To4x4();*/
+
 			} else {
 				//ゲームカメラ 
 				viewMatrix = MyMath::Inverse(cameraMatrix);

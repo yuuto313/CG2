@@ -5,42 +5,35 @@
 
 #include "Shake.h"
 #include "MyMath.h"
-
 /// <summary>
-/// 3Dデバッグカメラ
+/// 2Dデバッグカメラ
 /// </summary>
-class DebugCamera
+class DebugCamera2D
 {
 public:
-	/// <summary>
-	/// 初期化
-	/// </summary>
+
 	void Initialize();
 
-	/// <summary>
-	/// 更新
-	/// </summary>
 	void Update(BYTE key[256]);
 
 	/// <summary>
 	/// ビュー行列のゲッター
 	/// </summary>
 	/// <returns></returns>
-	Matrix4x4 GetViewMatrix()const { return viewMatrix_; }
+	Matrix3x3 GetViewMatrix()const { return viewMatrix_; }
+
+	Matrix4x4 Copy3x3To4x4();
+
 private:
-	// メンバ変数
 
-	Shake* shake_ = nullptr;
-
-	//x,y,z軸周りのローカル回転角
-	Vector3 rotation_ = { 0,0,0 };
-	//ローカル座標
-	Vector3 translation_ = { 0,0,-25 };
-	//ビュー行列
-	Matrix4x4 viewMatrix_ = {};
+	// x, y軸周りのローカル回転角
+	float rotation_ = 0.0f;
+	// ローカル座標
+	Vector2 translation_ = { 0,0 };
+	// ビュー行列
+	Matrix3x3 viewMatrix_ = {};
 	//射影行列
-	Matrix4x4 projectionMatrix_ = {};
-
+	Matrix3x3 projectionMatrix_ = {};
 
 	// シェイク関連
 
@@ -54,6 +47,5 @@ private:
 	bool isSpiral_ = false;
 	// 元の位置に戻っているかどうか
 	bool isReturning_ = false;
-
 };
 

@@ -34,6 +34,19 @@ Matrix4x4 MyMath::Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
 	return result;
 }
 
+Matrix3x3 MyMath::Multiply(const Matrix3x3& m1, const Matrix3x3& m2)
+{
+	Matrix3x3 result{};
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			for (int k = 0; k < 3; k++) {
+				result.m[i][j] += m1.m[i][k] * m2.m[k][j];
+			}
+		}
+	}
+	return result;
+}
+
 //長さ
 float MyMath::Length(const Vector3& v) {
 	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -96,6 +109,15 @@ Matrix4x4 MyMath::MakeTranslateMatrix(const Vector3& translate) {
 	return result;
 }
 
+Matrix3x3 MyMath::MakeTranslateMatrix(const Vector2& translate)
+{
+	Matrix3x3 mat = {};
+	mat.m[0][2] = translate.x;
+	mat.m[1][2] = translate.y;
+	mat.m[2][2] = 1.0f;
+	return mat;
+}
+
 // 拡縮
 Matrix4x4 MyMath::MakeScaleMatrix(const Vector3& scale) {
 	Matrix4x4 result{};
@@ -139,6 +161,18 @@ Matrix4x4 MyMath::MakeRotateZMatrix(float radian) {
 	result.m[2][2] = 1;
 	result.m[3][3] = 1;
 	return result;
+}
+
+Matrix3x3 MyMath::MakeRotateZMatrix3x3(float radian) {
+	Matrix3x3 mat = {};
+	float cosA = cosf(radian);
+	float sinA = sinf(radian);
+	mat.m[0][0] = cosA;
+	mat.m[0][1] = -sinA;
+	mat.m[1][0] = sinA;
+	mat.m[1][1] = cosA;
+	mat.m[2][2] = 1.0f;
+	return mat;
 }
 
 Matrix4x4 MyMath::MakeRotateMatrix(Vector3 rotation)
