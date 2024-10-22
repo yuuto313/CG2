@@ -1273,10 +1273,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	debugCamera = new DebugCamera();
 	debugCamera->Initialize();
 
-	/*DebugCamera2D* debugCamera2D = nullptr;
-	debugCamera2D = new DebugCamera2D();
-	debugCamera2D->Initialize();*/
-
 	//-------------------------------------
 	//ModelDataを使ったResourceの作成
 	//-------------------------------------
@@ -1631,11 +1627,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			if (activeCamera) {
 				//デバッグカメラモード
-				debugCamera->Update(key);
+				debugCamera->Update(key,keyPre);
 				viewMatrix = debugCamera->GetViewMatrix();
-
-				/*debugCamera2D->Update(key);
-				viewMatrix = debugCamera2D->Copy3x3To4x4();*/
 
 			} else {
 				//ゲームカメラ 

@@ -7,18 +7,17 @@ void DebugCamera::Initialize()
 	shake_->Initialize(translation_);
 
 	rotation_ = { 0,0,0 };
-	translation_ = { 0,0,-10 };
+	translation_ = { 0,0,-15 };
 	viewMatrix_ = {};
 	projectionMatrix_ = {};
 	isShakeing_ = false;
 	isVertical_ = false;
 	isReturning_ = false;
 	isHorizontal_ = false;
-	isSpiral_ = false;
 
 }
 
-void DebugCamera::Update(BYTE key[256])
+void DebugCamera::Update(BYTE key[256], BYTE preKey[256])
 {
 
 	//入力によるカメラの移動や回転
@@ -73,33 +72,26 @@ void DebugCamera::Update(BYTE key[256])
 	}
 
 	// シェイクを開始する
-	if (key[DIK_K] && !isShakeing_) {
+	if (key[DIK_K] && !preKey[DIK_K] && !isShakeing_) {
 		isShakeing_ = true;
-		shake_->SetValue(translation_);
+		shake_->SetValue(translation_, 0.075f);
 	}
 
 	// 縦揺れを開始する
-	if (key[DIK_V] && !isVertical_) {
+	if (key[DIK_V] && !preKey[DIK_V] && !isVertical_) {
 		isVertical_ = true;
-		shake_->SetValue(translation_);
+		shake_->SetValue(translation_,0.15f);
 	}
 
 	// 横揺れを開始する
-	if (key[DIK_H] && !isHorizontal_) {
+	if (key[DIK_H] && !preKey[DIK_H] && !isHorizontal_) {
 		isHorizontal_ = true;
-		shake_->SetValue(translation_);
-	}
-
-	// 渦巻きシェイクを開始する
-	if (key[DIK_L] && !isSpiral_) {
-		isSpiral_ = true;
-		shake_->SetValue(translation_);
+		shake_->SetValue(translation_,0.15f);
 	}
 
 	// シェイク処理
 	if (isShakeing_) {
-		shake_->AddTimer(0.016f);
-		if (shake_->GetTimer() <= shake_->GetDuration()) {
+		if (shake_->GetIsActive()) {
 			Vector3 shakeOffset = shake_->ApplyRandomShake();
 			translation_ += shakeOffset;
 		} else {
@@ -110,8 +102,7 @@ void DebugCamera::Update(BYTE key[256])
 
 	// 縦揺れ処理
 	if (isVertical_) {
-		shake_->AddTimer(0.016f);
-		if (shake_->GetTimer() <= shake_->GetDuration()) {
+		if (shake_->GetIsActive()) {
 			Vector3 shakeOffset = shake_->ApplyVerticalShake();
 			translation_ += shakeOffset;
 		} else {
@@ -122,24 +113,11 @@ void DebugCamera::Update(BYTE key[256])
 
 	// 横揺れ処理
 	if (isHorizontal_) {
-		shake_->AddTimer(0.016f);
-		if (shake_->GetTimer() <= shake_->GetDuration()) {
+		if (shake_->GetIsActive()) {
 			Vector3 shakeOffset = shake_->ApplyHorizontalShake();
 			translation_ += shakeOffset;
 		} else {
 			isHorizontal_ = false;
-			isReturning_ = true;
-		}
-	}
-
-	// 渦巻きシェイク処理
-	if (isSpiral_) {
-		shake_->AddTimer(0.016f);
-		if (shake_->GetTimer() <= shake_->GetDuration()) {
-			Vector3 shakeOffset = shake_->SpiralShake();
-			translation_ += shakeOffset;
-		} else {
-			isSpiral_ = false;
 			isReturning_ = true;
 		}
 	}

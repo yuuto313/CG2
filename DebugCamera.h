@@ -20,7 +20,7 @@ public:
 	/// <summary>
 	/// 更新
 	/// </summary>
-	void Update(BYTE key[256]);
+	void Update(BYTE key[256],BYTE preKey[256]);
 
 	/// <summary>
 	/// ビュー行列のゲッター
@@ -50,8 +50,7 @@ private:
 	bool isVertical_ = false;
 	// 横揺れフラグ
 	bool isHorizontal_ = false;
-	// 渦巻きシェイクフラグ
-	bool isSpiral_ = false;
+
 	// 元の位置に戻っているかどうか
 	bool isReturning_ = false;
 
